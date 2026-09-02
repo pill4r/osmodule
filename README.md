@@ -1,11 +1,11 @@
 # osmodule
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 [![Build](https://github.com/pill4r/osmodule/actions/workflows/build_app.yml/badge.svg)](https://github.com/pill4r/osmodule/actions/workflows/build_app.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 
 **A lean, modular Android client for DJI Osmo media.**
-
-`osmodule` 的目标是解决 DJI Mimo 在只需要相机连接和素材管理时 APK 仍然过大、功能过于冗余的问题：保留常用的本地相机能力，把遥控、GPS 等专业功能拆成按需安装的独立插件。
 
 osmodule is an independent Android client for browsing, previewing and downloading media from DJI
 Osmo cameras and selected DJI drones. It has no DJI SDK dependency, account, analytics, cloud upload

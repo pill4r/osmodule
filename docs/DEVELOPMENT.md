@@ -1,5 +1,7 @@
 # Development guide
 
+[English](DEVELOPMENT.md) | [简体中文](DEVELOPMENT.zh-CN.md)
+
 This document is the maintenance map for the current osmodule codebase. It explains where code
 belongs, which boundaries must remain stable, and what must pass before a change is ready to merge.
 The architectural rationale and Binder security model live in [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -119,8 +121,13 @@ They are decoded only inside CI and must not be committed. Before tagging a rele
 
 Documentation is part of the code change:
 
-- update `README.md` when the product scope, installation flow or supported hardware changes;
-- update `ARCHITECTURE.md` when module ownership or an APK boundary changes;
+- update `README.md` and `README.zh-CN.md` when the product scope, installation flow or supported
+  hardware changes;
+- update `ARCHITECTURE.md` and `ARCHITECTURE.zh-CN.md` when module ownership or an APK boundary
+  changes;
+- update `DEVELOPMENT.md` and `DEVELOPMENT.zh-CN.md` when the development process or quality gates
+  change;
+- update `ROADMAP.md` and `ROADMAP.zh-CN.md` together when priorities or hardware gaps change;
 - update `MEDIA_PROTOCOL.md` and `docs/01-protocol-map.md` when wire behavior is measured;
 - distinguish hardware-verified facts from inference; and
 - preserve attribution in `THIRD_PARTY_NOTICES.md` when incorporating external work.

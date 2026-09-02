@@ -1,5 +1,7 @@
 # Modular architecture
 
+[English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md)
+
 osmodule is delivered as a core media application, a bundled optional 360° viewer, and an independently
 installed remote-control plugin APK. The plugin owns its code, resources, permissions and Android lifecycle;
 osmodule Base never uses `DexClassLoader`, loads foreign resources or merges optional permissions into its APK.
