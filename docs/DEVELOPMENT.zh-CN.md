@@ -89,6 +89,8 @@ adb shell am instrument -w \
 
 ## 发布流程
 
+`.github/workflows/ci.yml` 会在每次推送到 `main`、每个以 `main` 为目标的 Pull Request，以及手动触发时运行。该工作流不需要任何签名 Secret。任务会校验 Gradle Wrapper、恢复 Gradle 缓存、运行全部 JVM 和 Android 单元测试、执行全仓库 Lint、构建两个 Debug APK，并将测试报告、Lint 报告和 APK 作为工作流产物保留 14 天。同一个 ref 的旧任务会自动取消，避免过时提交继续占用 Runner。
+
 推送 Tag 会触发 `.github/workflows/build_app.yml`。CI 会验证 Gradle Wrapper、运行完整质量门禁、使用相同签名配置构建 Base 和插件、上传构建产物，并创建 GitHub Release 草稿。
 
 仓库需要配置 `APP_KEYSTORE`、`STOREPASSWORD`、`KEYPASSWORD` 和 `KEYALIAS` 四个 Secret。它们只在 CI 内解码，绝不能提交到仓库。发布 Tag 前：

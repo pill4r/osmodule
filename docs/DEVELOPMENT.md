@@ -104,6 +104,12 @@ in the pull request or issue. Never add credentials or an unsanitized capture to
 
 ## Release workflow
 
+`.github/workflows/ci.yml` runs on every push to `main`, every pull request targeting `main`, and on
+manual dispatch. It needs no signing secrets. The job validates the Gradle Wrapper, restores the
+Gradle cache, runs all JVM and Android unit tests, runs repository-wide Lint, builds both Debug APKs,
+and retains test reports, Lint reports and APKs as workflow artifacts for 14 days. Concurrent runs on
+the same ref are cancelled so that only the newest revision consumes runner time.
+
 Tag pushes trigger `.github/workflows/build_app.yml`. CI validates the Gradle wrapper, runs the full
 quality gate, builds Base and plugin with the same signing configuration, uploads build artifacts and
 creates a draft GitHub release.

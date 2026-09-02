@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-[![构建状态](https://github.com/pill4r/osmodule/actions/workflows/build_app.yml/badge.svg)](https://github.com/pill4r/osmodule/actions/workflows/build_app.yml)
+[![CI](https://github.com/pill4r/osmodule/actions/workflows/ci.yml/badge.svg)](https://github.com/pill4r/osmodule/actions/workflows/ci.yml)
 [![许可证：MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 
 **一个精简、模块化的 DJI Osmo 安卓素材客户端。**

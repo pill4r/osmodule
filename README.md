@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-[![Build](https://github.com/pill4r/osmodule/actions/workflows/build_app.yml/badge.svg)](https://github.com/pill4r/osmodule/actions/workflows/build_app.yml)
+[![CI](https://github.com/pill4r/osmodule/actions/workflows/ci.yml/badge.svg)](https://github.com/pill4r/osmodule/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 
 **A lean, modular Android client for DJI Osmo media.**
