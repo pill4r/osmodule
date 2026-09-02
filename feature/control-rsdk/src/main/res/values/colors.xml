@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="rsdk_console_background">#090C11</color>
+    <color name="rsdk_panel">#141922</color>
+    <color name="rsdk_panel_raised">#1B222D</color>
+    <color name="rsdk_outline">#303947</color>
+    <color name="rsdk_text_primary">#F5F7FA</color>
+    <color name="rsdk_text_secondary">#A8B2C0</color>
+    <color name="rsdk_accent">#72E0CB</color>
+    <color name="rsdk_accent_dark">#123F3A</color>
+    <color name="rsdk_success">#61E6A8</color>
+    <color name="rsdk_record">#FF4E61</color>
+    <color name="rsdk_record_dark">#5A1923</color>
+    <color name="rsdk_warning">#F4C968</color>
+    <color name="rsdk_scrim">#99090C11</color>
+</resources>

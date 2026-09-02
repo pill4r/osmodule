@@ -1,0 +1,10 @@
+<resources>
+    <string name="panorama_title">360° 全景查看</string>
+    <string name="panorama_buffering">正在缓冲轻量预览流…</string>
+    <string name="panorama_hint">拖动查看四周 · 双指缩放</string>
+    <string name="panorama_play">播放</string>
+    <string name="panorama_pause">暂停</string>
+    <string name="panorama_recenter">回正</string>
+    <string name="panorama_unavailable">无法流式播放此 360° 视频。</string>
+    <string name="panorama_back">返回</string>
+</resources>

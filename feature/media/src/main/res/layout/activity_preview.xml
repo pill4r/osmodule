@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Full-bleed media player. The video/photo fills the whole screen; the title is a top overlay and
+  the playback + trim + queue controls are a translucent bottom overlay (custom controls, not the
+  system MediaController, so trim/transport/queue live together on the player). Tapping the media
+  toggles the overlays so the full frame is visible.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/previewRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <VideoView
+        android:id="@+id/videoView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/photoView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/cd_preview"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
+    <ProgressBar
+        android:id="@+id/spinner"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center" />
+
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:padding="16dp"
+        android:textColor="#CCCCCC"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <!-- Top overlay: filename · date taken · resolution·fps -->
+    <TextView
+        android:id="@+id/topInfo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#CC111111"
+        android:ellipsize="middle"
+        android:maxLines="2"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="10dp"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp" />
+
+    <!--
+      Actions on the *saved copy*, so this row only appears once the file exists in the gallery — until
+      then there is no content Uri to hand another app. Sits under topInfo and shows/hides with it.
+    -->
+    <LinearLayout
+        android:id="@+id/savedActions"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="56dp"
+        android:layout_marginEnd="8dp"
+        android:orientation="horizontal"
+        android:visibility="gone">
+
+        <ImageButton
+            android:id="@+id/btnShare"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="#CC111111"
+            android:contentDescription="@string/action_share"
+            android:padding="10dp"
+            android:src="@android:drawable/ic_menu_share"
+            app:tint="#FFFFFF" />
+
+        <ImageButton
+            android:id="@+id/btnEdit"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="6dp"
+            android:background="#CC111111"
+            android:contentDescription="@string/action_edit"
+            android:padding="10dp"
+            android:src="@android:drawable/ic_menu_edit"
+            app:tint="#FFFFFF" />
+    </LinearLayout>
+
+    <!-- Bottom overlay: playback + trim + queue -->
+    <LinearLayout
+        android:id="@+id/controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#B3000000"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="12dp">
+
+        <!-- Video-only controls (scrubber + transport + trim); hidden for photos -->
+        <LinearLayout
+            android:id="@+id/trimRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- Scrubber row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/txtCur"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="44dp"
+                    android:text="0:00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp" />
+
+                <!-- Custom SeekBar that also draws ◇ highlight marks on its own track. -->
+                <dev.konraditurbe.osmosis.ui.HighlightSeekBar
+                    android:id="@+id/seekBar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1" />
+
+                <TextView
+                    android:id="@+id/txtTotal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="44dp"
+                    android:gravity="end"
+                    android:text="0:00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <!-- Transport + trim row:  [   <<   play/pause   >>   ] -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnMarkIn"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="56dp"
+                    android:text="["
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <ImageButton
+                    android:id="@+id/btnRew"
+                    android:layout_width="52dp"
+                    android:layout_height="48dp"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_rewind"
+                    android:src="@android:drawable/ic_media_rew"
+                    app:tint="#FFFFFF" />
+
+                <ImageButton
+                    android:id="@+id/btnPlay"
+                    android:layout_width="60dp"
+                    android:layout_height="48dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_play_pause"
+                    android:src="@android:drawable/ic_media_pause"
+                    app:tint="#FFFFFF" />
+
+                <ImageButton
+                    android:id="@+id/btnFf"
+                    android:layout_width="52dp"
+                    android:layout_height="48dp"
+                    android:layout_marginHorizontal="4dp"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/cd_fast_forward"
+                    android:src="@android:drawable/ic_media_ff"
+                    app:tint="#FFFFFF" />
+
+                <Button
+                    android:id="@+id/btnMarkOut"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="56dp"
+                    android:text="]"
+                    android:textColor="#FFFFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Burst / interval frame strip: a centered 1×n row of thumbnails, built in code; the selected
+             frame gets an accent border and is what "Add to Queue" queues. Shown only for a group. -->
+        <HorizontalScrollView
+            android:id="@+id/burstStrip"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:fillViewport="true"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/burstRow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingHorizontal="6dp" />
+        </HorizontalScrollView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPanorama360"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/open_360_viewer"
+            android:textColor="#FFFFFF"
+            android:visibility="gone"
+            app:strokeColor="#CCFFFFFF" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnQueue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/add_to_queue"
+            android:textColor="@color/osmo_on_accent"
+            app:backgroundTint="@color/osmo_accent"
+            app:icon="@drawable/ic_download"
+            app:iconGravity="textStart"
+            app:iconTint="@color/osmo_on_accent" />
+    </LinearLayout>
+
+    <!--
+      Scrub preview: the frame under your thumb, floated above the seek bar while you drag. Frames are
+      decoded straight off the camera by range request (see ScrubFrames) — nothing is downloaded. Last
+      child so it draws over the controls; positioned in code (translationX/Y follow the seekbar thumb).
+      Degrades to a bare time readout when no frame has arrived yet.
+    -->
+    <LinearLayout
+        android:id="@+id/scrubPreview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:background="#E6000000"
+        android:orientation="vertical"
+        android:padding="2dp"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/scrubImage"
+            android:layout_width="140dp"
+            android:layout_height="79dp"
+            android:background="#FF1E1E1E"
+            android:contentDescription="@string/cd_scrub_preview"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/scrubTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="3dp"
+            android:text="0:00"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp" />
+    </LinearLayout>
+</FrameLayout>

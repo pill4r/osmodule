@@ -1,0 +1,15 @@
+<resources>
+    <string name="rsdk_plugin_name">osmodule Remote Control</string>
+    <string name="rsdk_plugin_ready">Remote Control is installed and compatible with Osmo 360.\n\nReturn to osmodule, connect the camera, then tap Remote beside its status for controls and live preview.</string>
+    <string name="rsdk_permissions_explanation">Permissions belong to this plugin APK, not to Base. Remote control uses Nearby devices/Bluetooth and Nearby Wi-Fi for local live preview. Location is also used by GPS sync; notifications are optional and only control whether its ongoing notification appears.</string>
+    <string name="rsdk_permissions_grant_remote">Allow remote control</string>
+    <string name="rsdk_permissions_grant_gps">Allow GPS sync location</string>
+    <string name="rsdk_permissions_grant_notifications">Allow GPS sync notifications (optional)</string>
+    <string name="rsdk_permission_granted">Granted</string>
+    <string name="rsdk_permission_remote_status">Remote control: %1$s</string>
+    <string name="rsdk_permission_gps_status">GPS sync location: %1$s</string>
+    <string name="rsdk_permission_notification_status">GPS sync notifications (optional): %1$s</string>
+    <string name="rsdk_permission_state_granted">granted</string>
+    <string name="rsdk_permission_state_missing">not granted</string>
+    <string name="rsdk_permissions_settings">Open app permission settings</string>
+</resources>

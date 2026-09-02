@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace = 'dev.konraditurbe.osmosis.feature.control.rsdk'
+    compileSdk = 36
+
+    defaultConfig {
+        minSdk = 29
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions { jvmTarget = '21' }
+}
+
+dependencies {
+    implementation project(':core:common')
+    implementation project(':core:module-api')
+    implementation project(':core:camera-session')
+    implementation project(':core:panorama-renderer')
+    implementation project(':camera:media')
+    implementation project(':transport:ble')
+    implementation project(':protocol:duml')
+    implementation project(':protocol:rsdk')
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'androidx.activity:activity:1.9.3'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.10.0'
+
+    testImplementation 'junit:junit:4.13.2'
+}

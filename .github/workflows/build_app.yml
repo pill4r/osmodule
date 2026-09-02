@@ -43,20 +43,24 @@ jobs:
           storeFile=../app-keystore.jks
           EOF
 
-      - name: Build release + debug APKs
-        run: bash ./gradlew assembleRelease assembleDebug
+      - name: Build and test Base + plugin APKs
+        run: bash ./gradlew test lint :app:assembleRelease :app:assembleDebug :plugins:rsdk:assembleRelease :plugins:rsdk:assembleDebug
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: app/build/outputs/apk/release/*.apk
+          name: osmodule-release-apks
+          path: |
+            app/build/outputs/apk/release/*.apk
+            plugins/rsdk/build/outputs/apk/release/*.apk
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: osmodule-debug-apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            plugins/rsdk/build/outputs/apk/debug/*.apk
 
       # Release APK only. The debug build stays an Actions artifact (above) where it is useful
       # for triage, and never becomes a release asset: it is signed with the debug key, so a tester
@@ -66,9 +70,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Osmosis ${{ github.ref_name }}
+          name: osmodule ${{ github.ref_name }}
           draft: true
           files: |
             app/build/outputs/apk/release/*.apk
+            plugins/rsdk/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

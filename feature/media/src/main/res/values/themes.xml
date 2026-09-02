@@ -1,0 +1,32 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- DayNight so the OS dark theme flips -night resources (Android 10+). On Android 12+ the app
+         Application applies Material You dynamic color on top of these, so accent, surfaces and background
+         follow the system palette; the values here are the pre-12 (and non-dynamic) fallback. -->
+    <style name="Theme.OsModule" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/osmo_accent</item>
+        <item name="colorOnPrimary">@color/osmo_on_accent</item>
+        <item name="colorPrimaryContainer">@color/osmo_accent</item>
+        <item name="colorOnPrimaryContainer">@color/osmo_on_accent</item>
+        <item name="colorSecondary">@color/osmo_accent</item>
+
+        <item name="android:colorBackground">@color/osmo_bg</item>
+        <item name="colorSurface">@color/osmo_surface</item>
+        <item name="colorSurfaceVariant">@color/osmo_surface_dim</item>
+        <item name="colorOnBackground">@color/osmo_ink</item>
+        <item name="colorOnSurface">@color/osmo_ink</item>
+        <item name="colorOnSurfaceVariant">@color/osmo_muted</item>
+        <item name="colorOutline">@color/osmo_track</item>
+
+        <!-- Both activities call enableEdgeToEdge(), which installs its own bar scrims and icon
+             polarity, so these four items no longer decide what the bars look like on any supported
+             release — enableEdgeToEdge wins on API 29-34, and from targetSdk 35 the platform ignores
+             the two colours outright. They stay as the pre-inflation appearance (the window shows the
+             theme background behind the bars for the frame before the activity runs) and as the
+             fallback for any window that does not go through those two activities. Content is kept
+             clear of the bars by inset padding in the activities, never by these. -->
+        <item name="android:statusBarColor">?android:attr/colorBackground</item>
+        <item name="android:navigationBarColor">?android:attr/colorBackground</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/osmo_light_system_bars</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/osmo_light_system_bars</item>
+    </style>
+</resources>

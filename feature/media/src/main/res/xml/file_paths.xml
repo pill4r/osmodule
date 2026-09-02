@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- APKs selected by the user are copied here, signature-checked, then handed to Android's
+         Package Installer. Base never installs packages silently. -->
+    <cache-path name="plugin_installs" path="plugin-installs/" />
+</paths>

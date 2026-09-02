@@ -1,6 +1,6 @@
-# Osmosis — DJI Osmo protocol map (BLE + WiFi)
+# osmodule — DJI Osmo protocol map (BLE + WiFi)
 
-Ground truth for how Osmosis talks to DJI Osmo cameras with **no DJI SDK**. Everything here is
+Ground truth for how osmodule talks to DJI Osmo cameras with **no DJI SDK**. Everything here is
 **hardware-verified** on an **Osmo Nano** and an **Xtra Edge Pro (= DJI Osmo Action 5 Pro)** unless a
 line is explicitly marked *inferred* (from the open-source reference repos for the 360 / Pocket 3 /
 Action 4-6, in `reference/`). Where the two verified cameras differ, the difference is called out; a
@@ -20,7 +20,7 @@ the brand) decides the datalink port and WiFi security.
 |-------|----------|-----------|-------|
 | Osmo Nano | `OsmoNano-XXXX` | `0x19` | DJI mfr id `0x08AA`; adv payload `19 00 00 <6-byte MAC> 03` |
 | Xtra Edge Pro / Action 5 Pro | `XtraEdgePro-XXXX` | `0x15` | Xtra OUI `EC:9E:EA`, company id `0xAAF7` (vs DJI `0xAA08`) |
-| Osmo 360 | `Osmo360-XXXX` | `0x17` | *inferred*; WPA3 AP |
+| Osmo 360 | `Osmo360-XXXX` | `0x17` | **9004 + TCP poke; WPA2 AP** |
 | Osmo Pocket 3 | (BLE local name only) | `0x20` | *inferred*; broadcasts no mfr data |
 
 The Xtra brand is a covert DJI shell company; the Edge Pro is a rebadged Action 5 Pro on DJI firmware
@@ -99,7 +99,7 @@ App-level pairing replaces OS Bluetooth bonding — there is no numeric BT pairi
   ("already paired"). Any of the shapes seen work (15-digit or 32-hex UUID). Proven by experiment on a
   Mavic 3: rotating it on an aircraft that had been re-pairing silently for days forced a full approval
   round, and a known one skips it again. We send a **fixed constant on cameras** and a **per-install
-  UUID, minted once and persisted, on drones** ([DronePairing](../app/src/main/java/dev/konraditurbe/osmosis/drone/DronePairing.kt)) —
+  UUID, minted once and persisted, on drones** ([DronePairing](../camera/media/src/main/java/dev/konraditurbe/osmosis/drone/DronePairing.kt)) —
   a shipped constant makes every install share one identity and contend for a single remembered slot.
   Retries must carry the **same** identifier: `fff5` is write-without-response, so a first write can
   drop, and a retry with a different identity reads as a second app asking to pair.
@@ -145,7 +145,7 @@ The camera hands out its **own AP SSID + passphrase** over BLE — no manual ent
 | ←   | 0xC0 | 07/47 | WiFiConnectResult | `00 00` = ok |
 
 The AP **sleeps when idle** and must be woken per session this way. IP: camera `192.168.2.1`, client
-gets `192.168.2.x` via DHCP. Security: **WPA2-PSK** on Nano and Xtra (WPA3-SAE on the 360, *inferred*),
+gets `192.168.2.x` via DHCP. Security: **WPA2-PSK** on Nano, Xtra and the Osmo 360,
 5.8 GHz.
 
 ### 5b-2. A camera that has never been activated has no AP at all
@@ -199,7 +199,8 @@ happened within a second of each other. Worth one probe on the next factory-fres
 - API 29+ **`WifiNetworkSpecifier`** → `ConnectivityManager.requestNetwork(...)` with a
   `NetworkCallback`. On `onAvailable(network)` call **`bindProcessToNetwork(network)`** so our HTTP/UDP
   sockets use the internet-less AP instead of falling back to cellular.
-- `setWpa2Passphrase` for Nano/Xtra; try `setWpa3Passphrase` first for the 360.
+- Use `setWpa2Passphrase` for Nano, Xtra and the hardware-verified Osmo 360. The earlier inferred
+  WPA3 setting made Android search for 32 seconds before its WPA2 retry found the 360 immediately.
 - **Keepalive:** the AP drops ~10 s idle. Hold it with an active HTTP download, a UDP datalink
   handshake ping every ~2 s, or a TCP-7001 heartbeat (Nano).
 
@@ -285,7 +286,7 @@ the raw payloads instead injects those 10 bytes mid-string wherever a path strad
 (`DCIM/DJI_` + `J….001/…`); the path is then unparseable and that one file silently drops — and which
 file drops depends on packet layout, so the loss looks random run-to-run. The reassembled manifest
 opens with a `u32-LE` file count. Don't seq-sort across pages: the per-file counter restarts per page.
-See [`manifestBytes`](../app/src/main/java/dev/konraditurbe/osmosis/camera/CameraSession.kt).
+See [`manifestBytes`](../camera/media/src/main/java/dev/konraditurbe/osmosis/camera/CameraSession.kt).
 
 ### 7d. Record layout
 
@@ -309,7 +310,7 @@ followed by **length-prefixed strings**. Per-record signature:
 
 ### 7e. Decode, don't scrape
 
-[`decodeManifest`](../app/src/main/java/dev/konraditurbe/osmosis/camera/CameraSession.kt) anchors on each
+[`decodeManifest`](../camera/media/src/main/java/dev/konraditurbe/osmosis/camera/CameraSession.kt) anchors on each
 primary-extension filename, scopes that record's media/thumb/proxy paths and fps to its own byte window
 (no cross-record joins, no `±220 B` fps guessing), and **asserts decoded record count == the header
 `u32` count**. That assertion is the safety net — a record dropped by a reassembly bug fails the check
@@ -403,6 +404,6 @@ bits 15:0  = DCF file number (554 -> DJI_0554)
 
 Full detail and ground truth:
 **[MEDIA_PROTOCOL §27–31](../MEDIA_PROTOCOL.md#dji-drone-quicktransfer-media-offload)**; implementation in
-[DcfRecords.kt](../app/src/main/java/dev/konraditurbe/osmosis/dcf/DcfRecords.kt), pinned by
-[DroneManifestTest](../app/src/test/java/dev/konraditurbe/osmosis/drone/DroneManifestTest.kt) against
+[DcfRecords.kt](../camera/media/src/main/java/dev/konraditurbe/osmosis/dcf/DcfRecords.kt), pinned by
+[DroneManifestTest](../camera/media/src/test/java/dev/konraditurbe/osmosis/drone/DroneManifestTest.kt) against
 the captured frames.

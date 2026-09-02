@@ -1,0 +1,15 @@
+<resources>
+    <string name="rsdk_plugin_name">osmodule 远控模块</string>
+    <string name="rsdk_plugin_ready">远控模块已安装，并适用于 Osmo 360。\n\n请返回 osmodule，先连接相机，再点按设备状态旁的“远控”以使用控制与实时预览。</string>
+    <string name="rsdk_permissions_explanation">这些权限属于远控模块 APK，而不是主应用。远控使用“附近的设备/蓝牙”，本地实时预览还会使用“附近的 Wi-Fi”；位置也用于 GPS 同步；通知为可选权限，只影响是否显示 GPS 同步的常驻通知。</string>
+    <string name="rsdk_permissions_grant_remote">允许远控</string>
+    <string name="rsdk_permissions_grant_gps">允许 GPS 同步位置</string>
+    <string name="rsdk_permissions_grant_notifications">允许 GPS 同步通知（可选）</string>
+    <string name="rsdk_permission_granted">已授权</string>
+    <string name="rsdk_permission_remote_status">远控基础权限：%1$s</string>
+    <string name="rsdk_permission_gps_status">GPS 同步位置：%1$s</string>
+    <string name="rsdk_permission_notification_status">GPS 同步通知（可选）：%1$s</string>
+    <string name="rsdk_permission_state_granted">已授权</string>
+    <string name="rsdk_permission_state_missing">未授权</string>
+    <string name="rsdk_permissions_settings">打开应用权限设置</string>
+</resources>

@@ -1,4 +1,4 @@
-# Osmosis — Media & camera DUML commands
+# osmodule — Media & camera DUML commands
 
 An implementation reference for browsing, fetching and controlling media on DJI Osmo cameras (WiFi UDP
 datalink + BLE control) — enough to write a client from scratch, in any language. Everything here was
@@ -49,7 +49,7 @@ by id first: cameras are frequently renamed, and a renamed body has no usable na
 | Osmo Action 4 | `0x0014` | `OsmoAction4` | 9004 `(unconfirmed)` | yes `(unconfirmed)` | WPA2 |
 | Osmo Action 5 Pro | `0x0015` | `OsmoAction5Pro` | 9004 | yes | WPA2 |
 | **Xtra Edge Pro** | `0x0015` | `XtraEdgePro` | **10004** | **no** | WPA2 |
-| Osmo 360 | `0x0017` | `Osmo360` | 9004 `(unconfirmed)` | yes `(unconfirmed)` | **WPA3** |
+| Osmo 360 | `0x0017` | `Osmo360` | 9004 | yes | **WPA2** |
 | Osmo Action 6 | `0x0018` | `OsmoAction6` | 9004 | yes | WPA2 |
 | Osmo Nano | `0x0019` | `OsmoNano` | 9004 | yes | WPA2 |
 | Osmo Pocket 3 | `0x0020` | `OsmoPocket3` | 9004 | yes | WPA2 |
@@ -62,8 +62,10 @@ Where a body behaves differently from the rest of the line:
 
 - **Osmo Action (1)** speaks the older [index-based list](#1-get-media-list) and addresses media by
   numeric index, not by path.
-- **Osmo Action 4** and the **Osmo 360** pair and hand over credentials, but their AP never appears, so
-  neither reaches the datalink. The 360 is the only body advertising an extra `fff7` characteristic.
+- **Osmo Action 4** pairs and hands over credentials, but its AP never appears, so it does not reach
+  the datalink. The **Osmo 360** is confirmed end-to-end on 9004 + TCP poke; it is the only tested body
+  advertising an extra `fff7` characteristic. Its AP is WPA2 — the earlier WPA3 inference caused an
+  unnecessary 32-second Android network search before the WPA2 fallback connected.
 - **Mavic 3** and **Neo 2** are aircraft: `udp/9003`, no poke, and a `0x51` session-open before anything
   ([§27](#27-session-open-0x51--required-before-anything-else-mavic-3),
   [§27a](#27a-neo-2--the-same-transport-a-different-unlock)).

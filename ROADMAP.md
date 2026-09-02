@@ -1,14 +1,31 @@
-# Osmosis — Roadmap
+# osmodule — Roadmap
+
+### Modular R-SDK control
+
+- [x] Process-wide camera session lease shared by media and R-SDK transports.
+- [x] One R-SDK connection hub shared by remote control and GPS sync.
+- [x] Public R-SDK version, key, mode, record, status, sleep, wake and restart protocol support.
+- [x] Serialized commands with sequence-matched acknowledgements, timeout and retry.
+- [x] Stable `CameraRemoteControl` management-plane contract; its implementation is absent from osmodule Base.
+- [x] Move R-SDK control and GPS into a separately installed, same-signature plugin APK.
+- [x] Add a versioned AIDL boundary, signed plugin discovery and plugin-owned private UI launch.
+- [x] Add the Base module manager with local APK verification and system Package Installer handoff.
+- [x] Declare per-module camera compatibility; remote control is restricted to Osmo 360.
+- [x] Prevent Base media startup while the R-SDK plugin reports an active cross-process camera lease.
+- [x] Add a low-latency local Wi-Fi viewfinder with H.264/H.265 hardware decode to the remote console.
+- [ ] Hardware-verify the viewfinder receiver and stream profile across Osmo 360 firmware versions.
+- [ ] Hardware-verify every command across Osmo 360 firmware versions and record firmware gates.
+- [ ] Add a signed module-repository index and download UI; current module installation selects a local APK.
+
+### 360° media
+
+- [x] Add an optional Osmo 360-only equirectangular video viewer with drag and pinch navigation.
+- [x] Keep pairing, flat preview and downloads in the core media app.
+- [x] Remove the competing scrub-frame decoder during Osmo 360 startup buffering.
 
 ### 2. The rest of the Osmo line:
 
-- **Action 4**: WIP, seems mostly everything works.
-
-See:
-
-[Harden Osmo Action 4 support](https://github.com/KonradIT/osmosis/pull/34)
-
-https://github.com/KonradIT/osmosis/issues/31
+- **Action 4**: WIP, most media operations appear to work.
 
 - [x] Camera is detected and can be connected to
 - [x] Grid loads
@@ -69,7 +86,7 @@ We want what Mimo's playback screen shows — what the camera was *set to* when 
 duration, fps, resolution and size, all manifest fields, and nothing about exposure.
 
 - **Stills — already on the wire.** The EXIF thumbnail path fetches the original's first 64 kB
-  ([EmbeddedJpeg](app/src/main/java/dev/konraditurbe/osmosis/core/EmbeddedJpeg.kt)) and the same `APP1`
+  ([EmbeddedJpeg](camera/media/src/main/java/dev/konraditurbe/osmosis/core/EmbeddedJpeg.kt)) and the same `APP1`
   block carries ISO, exposure time, aperture and focal length. We download and discard them today, so
   reading them costs one parse and **zero extra requests**. The obvious first increment.
 - **Video — the `djmd` track**, which is protobuf and not encrypted. Needs a range read of the right

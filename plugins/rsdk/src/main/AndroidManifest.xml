@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:name=".RsdkPluginApp"
+        android:allowBackup="false"
+        android:label="@string/rsdk_plugin_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+
+        <activity
+            android:name=".RsdkPluginHomeActivity"
+            android:exported="true"
+            android:permission="dev.konraditurbe.osmosis.permission.BIND_PLUGIN">
+            <intent-filter>
+                <action android:name="dev.konraditurbe.osmosis.plugin.MANAGE_PERMISSIONS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Synchronous first-launch IPC; only the same-signature Base APK may call it. -->
+        <provider
+            android:name="dev.konraditurbe.osmosis.plugin.PluginBootstrapProvider"
+            android:authorities="${applicationId}.bootstrap"
+            android:exported="true"
+            android:permission="dev.konraditurbe.osmosis.permission.BIND_PLUGIN"
+            android:grantUriPermissions="false" />
+
+        <service
+            android:name=".RsdkPluginService"
+            android:exported="true"
+            android:permission="dev.konraditurbe.osmosis.permission.BIND_PLUGIN">
+            <intent-filter>
+                <action android:name="dev.konraditurbe.osmosis.plugin.BIND" />
+            </intent-filter>
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.ID" android:value="rsdk-control" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.NAME" android:value="osmodule Remote Control" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.VERSION" android:value="5" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.PROTOCOL_MIN" android:value="1" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.PROTOCOL_MAX" android:value="1" />
+            <meta-data
+                android:name="dev.konraditurbe.osmosis.plugin.CAPABILITIES"
+                android:value="camera.rsdk.remote-panel,camera.rsdk.remote-control,camera.rsdk.status,camera.rsdk.gps-sync,camera.session.owner" />
+        </service>
+    </application>
+</manifest>
