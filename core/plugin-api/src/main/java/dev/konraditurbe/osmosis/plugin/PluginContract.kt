@@ -47,13 +47,22 @@ object PluginContract {
     const val KEY_CAMERA_SESSION_ACTIVE = "camera_session_active"
     const val KEY_CAMERA_SESSION_NAME = "camera_session_name"
     const val KEY_REQUEST_PERMISSIONS = "request_permissions"
+    const val KEY_MEDIA_TITLE = "media_title"
+    const val KEY_MEDIA_DEVICE_MODEL = "media_device_model"
+    const val KEY_MEDIA_STREAM_CANDIDATES = "media_stream_candidates"
+    const val KEY_MEDIA_NETWORK = "media_network"
 
     const val RSDK_PACKAGE = "dev.konraditurbe.osmosis.plugin.rsdk"
     const val RSDK_PLUGIN_ID = "rsdk-control"
+    const val PANORAMA_PACKAGE = "dev.konraditurbe.osmosis.plugin.panorama360"
+    const val PANORAMA_PLUGIN_ID = "panorama360"
 
     const val CAPABILITY_RSDK_PANEL = "camera.rsdk.remote-panel"
+    const val CAPABILITY_RSDK_REMOTE_CONTROL = "camera.rsdk.remote-control"
+    const val CAPABILITY_RSDK_STATUS = "camera.rsdk.status"
     const val CAPABILITY_RSDK_GPS = "camera.rsdk.gps-sync"
     const val CAPABILITY_CAMERA_SESSION_OWNER = "camera.session.owner"
+    const val CAPABILITY_MEDIA_360_VIEW = "camera.media.360-view"
 }
 
 data class PluginDescriptor(

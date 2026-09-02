@@ -211,7 +211,7 @@ class PluginManagerActivity : AppCompatActivity() {
             text = getString(if (packageInstalled) R.string.module_update_apk else R.string.module_install_apk)
             setOnClickListener { selectApk(known.packageName) }
         })
-        if (record?.compatible == true) {
+        if (record?.compatible == true && known.hasPermissionCenter) {
             actions.addView(MaterialButton(this).apply {
                 text = getString(R.string.module_permissions)
                 setOnClickListener { openPluginPermissions(known.packageName) }
@@ -339,6 +339,10 @@ class PluginManagerActivity : AppCompatActivity() {
     }
 
     private fun promptPluginPermissionsIfInstalled(pluginPackage: String, attempt: Int = 0) {
+        if (KNOWN_PLUGINS.firstOrNull { it.packageName == pluginPackage }?.hasPermissionCenter != true) {
+            render()
+            return
+        }
         if (ExternalPluginRegistry.packageRecord(pluginPackage)?.compatible == true) {
             openPluginPermissions(pluginPackage)
         } else if (attempt < 4) {
@@ -417,6 +421,7 @@ class PluginManagerActivity : AppCompatActivity() {
         val summary: Int,
         val openCapability: String?,
         val supportedModels: Set<String>,
+        val hasPermissionCenter: Boolean,
     )
 
     private companion object {
@@ -427,6 +432,15 @@ class PluginManagerActivity : AppCompatActivity() {
                 R.string.module_rsdk_summary,
                 PluginContract.CAPABILITY_RSDK_PANEL,
                 setOf(DeviceModels.OSMO_360),
+                true,
+            ),
+            KnownPlugin(
+                PluginContract.PANORAMA_PACKAGE,
+                R.string.module_panorama_name,
+                R.string.module_panorama_summary,
+                null,
+                setOf(DeviceModels.OSMO_360),
+                false,
             ),
         )
     }

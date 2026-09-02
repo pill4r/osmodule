@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+def releaseStoreFile = keystorePropsFile.exists() ? rootProject.file(keystoreProps['storeFile']) : null
+if (releaseStoreFile != null && !releaseStoreFile.exists()) {
+    releaseStoreFile = rootProject.file("app/${keystoreProps['storeFile']}")
+}
+
+android {
+    namespace = 'dev.konraditurbe.osmosis.plugin.panorama360'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = 'dev.konraditurbe.osmosis.plugin.panorama360'
+        minSdk = 29
+        targetSdk = 36
+        versionCode = 1
+        versionName = '1.0.0'
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile = releaseStoreFile
+                storePassword = keystoreProps['storePassword']
+                keyAlias = keystoreProps['keyAlias']
+                keyPassword = keystoreProps['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            if (keystorePropsFile.exists()) signingConfig = signingConfigs.release
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions { jvmTarget = '21' }
+}
+
+dependencies {
+    implementation "dev.konraditurbe.osmodule:plugin-sdk:${rootProject.pluginSdkVersion}"
+    implementation project(':feature:panorama360')
+}

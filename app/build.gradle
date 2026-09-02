@@ -24,9 +24,10 @@ android {
         // Must exceed every code already in a tester's hands: 20 went out as
         // 1.3.3-action1-playback, 22 as 1.3.1-rc1, 23 was tagged v1.3.1 but never published, 24 is
         // the published v1.3.2, 25 the published v1.4.0, 26 the published v1.4.1, 27 the published
-        // v1.4.2 and 28 the published v1.4.3.
-        versionCode = 31
-        versionName = "1.4.6"
+        // v1.4.2 and 28 the published v1.4.3. Version 32 starts the fully external optional-plugin
+        // layout and enables release shrinking.
+        versionCode = 32
+        versionName = "1.5.0"
         testInstrumentationRunner = "dev.konraditurbe.osmosis.plugins.PluginBindingInstrumentation"
     }
 
@@ -46,7 +47,8 @@ android {
             if (keystorePropsFile.exists()) {
                 signingConfig = signingConfigs.release
             }
-            minifyEnabled = false
+            minifyEnabled = true
+            shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -71,7 +73,6 @@ dependencies {
     implementation project(':core:module-api')
     implementation project(':core:plugin-api')
     implementation project(':feature:media')
-    implementation project(':feature:panorama360')
 
     implementation 'androidx.activity:activity:1.9.3'
     implementation 'androidx.appcompat:appcompat:1.6.1'

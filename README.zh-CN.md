@@ -18,7 +18,7 @@ DJI Mimo 覆盖了很多使用场景，但一部分用户只需要一条从 Osmo
 osmodule 遵循三条原则：
 
 - **让 Base APK 保持专注：**只包含相机发现、配对、素材浏览、预览和下载等核心能力。
-- **让专业功能按需安装：**Osmo 360 遥控和 GPS 同步以独立 APK 形式提供。
+- **让专业功能按需安装：**Osmo 360 全景查看、遥控和 GPS 同步均以独立 APK 形式提供。
 - **让边界可以被强制执行：**模块使用明确的 Gradle 依赖；外部插件通过带版本、同签名的 Binder 协议通信，而不是把外部代码加载到 Base 中。
 
 本项目不打算复刻 DJI Mimo 的全部功能。我们的目标是提供一个更小、可审计的本地素材客户端，并确保项目持续扩展时不会让 Base APK 再次变成单体应用。
@@ -27,12 +27,12 @@ osmodule 遵循三条原则：
 
 - 通过低功耗蓝牙发现相机并完成配对。
 - 素材网格、缩略图和低分辨率流式预览。
-- 可选的 Osmo 360 交互式全景视频查看器，支持拖动视角和双指缩放；原始 OSV 视频会自动使用配对的 LRF 代理流打开。
+- 可独立安装的 Osmo 360 交互式全景视频查看器，支持拖动视角和双指缩放；原始 OSV 视频会自动使用配对的 LRF 代理流打开。
 - 将高分辨率素材断点续传至用户选择的视频目录，默认使用 `Movies/osmodule`、`Pictures/osmodule` 和 `Download/osmodule`。
 - 设置入点和出点，并通过无损流复制完成裁剪。
 - 显示相机电量、拍摄模式和存储状态。
 - 多相机历史记录、收藏和删除。
-- 模块管理器，可启用内置功能或安装经过签名校验的外部模块。
+- 模块管理器，可安装或删除经过签名校验的可选插件。
 - 可选的 Osmo 360 遥控台，提供低延迟局域网预览、R-SDK 控制、相机状态、BLE 唤醒和 GPS 同步。
 - 支持部分 DJI 无人机的 QuickTransfer 素材访问。
 
@@ -53,18 +53,20 @@ osmodule 遵循三条原则：
 
 ## 安装与连接
 
-先安装 `app-debug.apk`。只有在需要遥控或 GPS 同步时才安装 `rsdk-debug.apk`；两个 APK 必须使用同一签名密钥构建。在 Xiaomi、Redmi 或 POCO 设备上，如果 HyperOS 阻止 R-SDK 插件的 Binder 服务，请为该插件启用“自启动”。
+先安装 `app-debug.apk`。需要交互式 360° 播放时安装 `panorama360-debug.apk`，需要遥控或 GPS 同步时安装 `rsdk-debug.apk`。所有已安装 APK 必须使用同一签名密钥构建。在 Xiaomi、Redmi 或 POCO 设备上，如果 HyperOS 阻止 R-SDK 插件的 Binder 服务，请为该插件启用“自启动”。
 
 1. 打开蓝牙和 Wi-Fi，然后启动 osmodule。
 2. 授予所需的附近设备权限。
 3. 打开相机，并在相机列表中选择它。
 4. 在相机上确认配对，然后允许 Android 加入相机 Wi-Fi。
-5. 浏览、预览或下载素材。对于 Osmo 360 视频，可从预览页打开交互式 360° 查看器。
-6. 打开“模块”，启用内置的 360° 查看器，或安装可选的 Osmo 360 遥控插件。
+5. 打开“模块”，按需安装 360° 查看器和/或 Osmo 360 遥控插件。
+6. 浏览、预览或下载素材。安装查看器插件后，Osmo 360 的 OSV 视频会在其中打开。
 
 ## 隐私
 
-osmodule 只通过相机的本地网络地址（`192.168.2.1`）与相机通信，不包含数据分析、账号系统、激活服务或云端上传。Android 网络安全配置将明文相机连接限制在该本地地址。
+osmodule 只通过相机不连接互联网的本地网络（通常为 `192.168.2.1`）与相机通信，不包含数据
+分析、账号系统、激活服务或云端上传。由于不同相机型号通过无 TLS 的本地 HTTP 提供素材，
+应用允许明文 HTTP，但业务代码只提供相机本地 URL。
 
 ## 构建
 
@@ -73,20 +75,24 @@ osmodule 只通过相机的本地网络地址（`192.168.2.1`）与相机通信�
 ```sh
 ./gradlew test lint \
   :app:assembleDebug \
+  :plugins:panorama360:assembleDebug \
   :plugins:rsdk:assembleDebug
 ```
 
 输出文件：
 
 - `app/build/outputs/apk/debug/app-debug.apk`
+- `plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk`
 - `plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk`
 
-插件是可选的。只需要素材访问的用户仅安装 Base APK 即可。如果没有提供本地 `keystore.properties`，Release 构建会生成未签名 APK；Base 和插件的正式版本必须使用相同的签名谱系。
+两个插件都是可选的。只需要普通素材访问的用户仅安装 Base APK 即可。如果没有提供本地 `keystore.properties`，Release 构建会生成未签名 APK；Base 和插件的正式版本必须使用相同的签名谱系。
 
 ## 文档
 
 - [架构说明](docs/ARCHITECTURE.zh-CN.md) — APK 边界、模块关系和插件信任模型。
 - [开发指南](docs/DEVELOPMENT.zh-CN.md) — 代码归属、质量门禁和发布流程。
+- [插件 SDK](docs/PLUGIN_SDK.zh-CN.md) — 版本化 AAR 的使用方法和插件实现协议。
+- [插件分发模型](docs/PLUGIN_MODEL.zh-CN.md) — 官方目录、签名与威胁边界。
 - [素材协议参考（英文）](MEDIA_PROTOCOL.md) — 逆向分析得到的 BLE、DUML 和 HTTP 行为。
 - [协议地图（英文）](docs/01-protocol-map.md) — 数据包级命令和传输索引。
 - [路线图](ROADMAP.zh-CN.md) — 已完成工作、硬件验证缺口和计划功能。

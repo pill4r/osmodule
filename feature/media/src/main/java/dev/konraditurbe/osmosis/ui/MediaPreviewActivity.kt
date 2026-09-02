@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.ConnectivityManager
 import android.net.Uri
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
@@ -36,7 +37,6 @@ import dev.konraditurbe.osmosis.net.HttpClient
 import dev.konraditurbe.osmosis.net.ImageLoader
 import dev.konraditurbe.osmosis.modules.DeviceModels
 import dev.konraditurbe.osmosis.modules.ModuleRegistry
-import dev.konraditurbe.osmosis.modules.ModuleSettings
 import dev.konraditurbe.osmosis.modules.PanoramaVideoRequest
 import dev.konraditurbe.osmosis.modules.PanoramaVideoViewerLauncher
 
@@ -566,8 +566,8 @@ class MediaPreviewActivity : AppCompatActivity() {
     private fun canOpenPanorama(): Boolean =
         file.isVideo &&
             deviceModel == DeviceModels.OSMO_360 &&
-            ModuleSettings.isEnabled(this, PANORAMA_MODULE_ID) &&
-            ModuleRegistry.capability(PanoramaVideoViewerLauncher::class.java) != null
+            ModuleRegistry.capability(PanoramaVideoViewerLauncher::class.java)
+                ?.isAvailable(this) == true
 
     private fun shouldAutomaticallyOpenPanorama(): Boolean =
         shouldAutomaticallyUsePanorama(file, deviceModel) && canOpenPanorama()
@@ -614,6 +614,7 @@ class MediaPreviewActivity : AppCompatActivity() {
                 // MediaPlayer would decode only one lens, and probing that 100+ MB file also stalls
                 // startup. The paired LRF is the purpose-built dual-fisheye streaming proxy.
                 streamCandidates = previewCandidatesForDevice().map { "http://$ip$it" },
+                network = getSystemService(ConnectivityManager::class.java).boundNetworkForProcess,
             ),
         )
         if (opened && closeFlatPreviewOnSuccess) {
@@ -899,7 +900,6 @@ class MediaPreviewActivity : AppCompatActivity() {
         /** Coarse grid decoded up front — enough that any thumb position has a frame within a few
          *  percent of the clip, without a long stall on the camera's link before the first drag. */
         private const val SCRUB_GRID_CELLS = 12
-        private const val PANORAMA_MODULE_ID = "panorama360"
 
         const val EXTRA_PATH = "path"
         private const val EXTRA_STORAGE = "storage"

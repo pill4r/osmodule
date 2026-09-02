@@ -2,7 +2,7 @@ package dev.konraditurbe.osmosis.modules
 
 import android.content.Context
 
-/** User-controlled enable state for optional bundled and external modules. */
+/** User-controlled enable state for optional in-process modules. */
 object ModuleSettings {
     private const val PREFS = "osmodule_modules"
     private const val PREFIX = "enabled."

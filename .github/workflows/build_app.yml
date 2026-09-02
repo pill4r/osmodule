@@ -3,7 +3,7 @@ name: Build & release APK
 on:
   push:
     tags:
-      - '**'
+      - 'v*'
 
 permissions:
   contents: write
@@ -43,7 +43,11 @@ jobs:
           EOF
 
       - name: Build and test Base + plugin APKs
-        run: bash ./gradlew test lint :app:assembleRelease :app:assembleDebug :plugins:rsdk:assembleRelease :plugins:rsdk:assembleDebug
+        run: >-
+          bash ./gradlew test lint
+          :app:assembleRelease :app:assembleDebug
+          :plugins:panorama360:assembleRelease :plugins:panorama360:assembleDebug
+          :plugins:rsdk:assembleRelease :plugins:rsdk:assembleDebug
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v7
@@ -51,7 +55,11 @@ jobs:
           name: osmodule-release-apks
           path: |
             app/build/outputs/apk/release/*.apk
+            plugins/panorama360/build/outputs/apk/release/*.apk
             plugins/rsdk/build/outputs/apk/release/*.apk
+            app/build/outputs/mapping/release/**
+            plugins/panorama360/build/outputs/mapping/release/**
+            plugins/rsdk/build/outputs/mapping/release/**
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v7
@@ -59,6 +67,7 @@ jobs:
           name: osmodule-debug-apks
           path: |
             app/build/outputs/apk/debug/*.apk
+            plugins/panorama360/build/outputs/apk/debug/*.apk
             plugins/rsdk/build/outputs/apk/debug/*.apk
 
       # Release APK only. The debug build stays an Actions artifact (above) where it is useful
@@ -73,6 +82,7 @@ jobs:
           draft: true
           files: |
             app/build/outputs/apk/release/*.apk
+            plugins/panorama360/build/outputs/apk/release/*.apk
             plugins/rsdk/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -10,11 +10,11 @@ Features:
 * Live camera status: battery, charge state, shooting mode and storage use for internal memory and SD card.
 * Multi-camera support: saved cameras are remembered and the list shows which ones are currently in range.
 * Mark media as favourite on the camera, and filter the grid to favourites, photos or videos.
-* Module manager for the bundled 360° viewer and the optional, signed Osmo 360 remote-control/GPS plugin.
+* Module manager for optional, signed 360° viewer and Osmo 360 remote-control/GPS plugin APKs.
 
 Supported hardware, verified on real devices: Osmo Nano, Osmo Action 5 Pro, Osmo Action 6 and Osmo Pocket 3. The same protocol is used by the Xtra-branded rebadges of those cameras (Atto, Edge, Edge Pro, Muse). Other cameras in the Osmo line are handled on a best-effort basis, and support for DJI drones using Quick Transfer is in progress.
 
-Privacy: osmodule talks to the camera at 192.168.2.1 and to nothing else. There are no analytics, no accounts, no activation servers and no cloud upload; media never leaves the phone and the camera. The bundled network security configuration restricts cleartext traffic to the camera's local address.
+Privacy: osmodule talks to the camera on its local, internet-less network and to nothing else. There are no analytics, no accounts, no activation servers and no cloud upload; media never leaves the phone and the camera. Cleartext HTTP is enabled because the camera serves media locally without TLS.
 
 Requirements: Android 10 or newer, Bluetooth LE, and permission to use nearby devices (Bluetooth scan and connect) plus Wi-Fi state changes. Location permission is used for Bluetooth scanning on older releases and for the optional GPS sync feature.
 

@@ -17,5 +17,9 @@ class PluginDescriptorTest {
             PluginContract.bootstrapAuthority(PluginContract.RSDK_PACKAGE) ==
                 "dev.konraditurbe.osmosis.plugin.rsdk.bootstrap",
         )
+        assertTrue(
+            PluginContract.bootstrapAuthority(PluginContract.PANORAMA_PACKAGE) ==
+                "dev.konraditurbe.osmosis.plugin.panorama360.bootstrap",
+        )
     }
 }

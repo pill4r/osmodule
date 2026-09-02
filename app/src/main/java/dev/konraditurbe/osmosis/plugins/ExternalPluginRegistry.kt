@@ -75,6 +75,7 @@ object ExternalPluginRegistry {
             val service = resolve.serviceInfo ?: return@mapNotNull null
             val component = ComponentName(service.packageName, service.name)
             val descriptor = descriptorFromMetadata(service)
+            val catalogIssue = OfficialPluginCatalog.validationIssue(service.packageName, descriptor)
             val pluginSigners = signerDigests(packageInfo(pm, service.packageName))
             val trusted = hostSigners.isNotEmpty() && pluginSigners.any(hostSigners::contains)
             val bootstrap = pm.resolveContentProvider(
@@ -84,13 +85,14 @@ object ExternalPluginRegistry {
             val issue = when {
                 !service.exported -> "Plugin service is not exported"
                 service.permission != PluginContract.BIND_PERMISSION -> "Plugin service is not protected by the signature permission"
+                descriptor == null -> "Plugin metadata is incomplete"
+                catalogIssue != null -> catalogIssue
                 !trusted -> "Signing certificate does not match osmodule Base"
                 bootstrap == null -> "Plugin bootstrap provider is missing"
                 !bootstrap.exported -> "Plugin bootstrap provider is not exported"
                 bootstrap.readPermission != PluginContract.BIND_PERMISSION ||
                     bootstrap.writePermission != PluginContract.BIND_PERMISSION ->
                     "Plugin bootstrap provider is not protected by the signature permission"
-                descriptor == null -> "Plugin metadata is incomplete"
                 !descriptor.supportsHostProtocol() -> "Plugin protocol is incompatible with Base v${PluginContract.PROTOCOL_VERSION}"
                 else -> null
             }
@@ -439,16 +441,17 @@ object ExternalPluginRegistry {
         if (hostSigners.isEmpty() || archiveSigners.none(hostSigners::contains)) {
             return PluginArchiveCheck(false, archive.packageName, "APK signing certificate does not match osmodule Base")
         }
-        val expectedId = when (expectedPackage) {
-            PluginContract.RSDK_PACKAGE -> PluginContract.RSDK_PLUGIN_ID
-            else -> return PluginArchiveCheck(false, archive.packageName, "Unknown plugin package")
-        }
+        val policy = OfficialPluginCatalog.policyFor(expectedPackage)
+            ?: return PluginArchiveCheck(false, archive.packageName, "Unknown plugin package")
         val service = archive.services.orEmpty().firstOrNull {
             it.exported && it.permission == PluginContract.BIND_PERMISSION &&
-                descriptorFromMetadata(it)?.id == expectedId
+                descriptorFromMetadata(it)?.id == policy.pluginId
         } ?: return PluginArchiveCheck(false, archive.packageName, "APK has no protected osmodule plugin service")
         val descriptor = descriptorFromMetadata(service)
             ?: return PluginArchiveCheck(false, archive.packageName, "APK plugin metadata is invalid")
+        OfficialPluginCatalog.validationIssue(expectedPackage, descriptor)?.let { issue ->
+            return PluginArchiveCheck(false, archive.packageName, issue)
+        }
         val bootstrapAuthority = PluginContract.bootstrapAuthority(expectedPackage)
         val hasBootstrap = archive.providers.orEmpty().any {
             it.name == PluginContract.BOOTSTRAP_PROVIDER_CLASS &&

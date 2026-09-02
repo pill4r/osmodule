@@ -8,3 +8,16 @@ plugins {
     id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
     id 'org.jetbrains.kotlin.jvm' version '1.9.24' apply false
 }
+
+// Plugin applications consume the same versioned Maven coordinate used by out-of-tree plugin
+// projects. Inside this repository Gradle substitutes the source project, so a clean checkout does
+// not depend on a package having already been published.
+ext.pluginSdkVersion = providers.gradleProperty('pluginSdkVersion').get()
+
+configure([project(':plugins:rsdk'), project(':plugins:panorama360')]) {
+    configurations.configureEach {
+        resolutionStrategy.dependencySubstitution {
+            substitute module('dev.konraditurbe.osmodule:plugin-sdk') using project(':core:plugin-api')
+        }
+    }
+}

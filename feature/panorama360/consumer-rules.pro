@@ -1,1 +1,1 @@
-# No public implementation types are reflected other than Panorama360Module from manifest metadata.
+# The viewer is reached through its plugin application's explicit PendingIntent; no reflection rules.

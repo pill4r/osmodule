@@ -10,6 +10,7 @@
 
     <queries>
         <package android:name="dev.konraditurbe.osmosis.plugin.rsdk" />
+        <package android:name="dev.konraditurbe.osmosis.plugin.panorama360" />
         <intent>
             <action android:name="dev.konraditurbe.osmosis.plugin.BIND" />
         </intent>
@@ -17,6 +18,7 @@
             <action android:name="dev.konraditurbe.osmosis.plugin.MANAGE_PERMISSIONS" />
         </intent>
         <provider android:authorities="dev.konraditurbe.osmosis.plugin.rsdk.bootstrap" />
+        <provider android:authorities="dev.konraditurbe.osmosis.plugin.panorama360.bootstrap" />
     </queries>
 
     <application

@@ -19,8 +19,9 @@ import dev.konraditurbe.osmosis.modules.ModuleInstallationState
 import dev.konraditurbe.osmosis.modules.ModuleManagementLauncher
 import dev.konraditurbe.osmosis.modules.ModuleRegistry
 import dev.konraditurbe.osmosis.modules.ModuleScope
-import dev.konraditurbe.osmosis.modules.ModuleSettings
 import dev.konraditurbe.osmosis.modules.DeviceModels
+import dev.konraditurbe.osmosis.modules.PanoramaVideoRequest
+import dev.konraditurbe.osmosis.modules.PanoramaVideoViewerLauncher
 import dev.konraditurbe.osmosis.plugin.PluginContract
 
 class ExternalPluginBridgeModule : AppModule {
@@ -34,6 +35,7 @@ class ExternalPluginBridgeModule : AppModule {
     override fun install(scope: ModuleScope) {
         scope.bind(ModuleManagementLauncher::class.java, BaseModuleManagementLauncher())
         scope.bind(CameraRemotePanelLauncher::class.java, ExternalRsdkPanelLauncher())
+        scope.bind(PanoramaVideoViewerLauncher::class.java, ExternalPanoramaViewerLauncher())
         scope.bind(CameraSessionGate::class.java, ExternalCameraSessionGate())
     }
 }
@@ -69,28 +71,47 @@ private class BaseModuleManagementLauncher : ModuleManagementLauncher {
             .filter { it.id != "external-plugin-bridge" && it.supports(deviceModel) }
             .mapNotNull { module -> module.deviceStatus(context) }
             .toList()
-        val external = if (deviceModel == DeviceModels.OSMO_360) {
-            val record = ExternalPluginRegistry.packageRecord(PluginContract.RSDK_PACKAGE)
-            val packageInstalled = runCatching {
-                @Suppress("DEPRECATION")
-                context.packageManager.getPackageInfo(PluginContract.RSDK_PACKAGE, 0)
-            }.isSuccess
-            listOf(
-                DeviceModuleStatus(
-                    id = RSDK_MODULE_ID,
-                    name = context.getString(R.string.module_rsdk_name),
-                    description = context.getString(R.string.module_rsdk_summary),
-                    installationState = when {
-                        record?.compatible == true -> ModuleInstallationState.INSTALLED
-                        record == null && !packageInstalled -> ModuleInstallationState.NOT_INSTALLED
-                        else -> ModuleInstallationState.NEEDS_ATTENTION
-                    },
-                ),
-            )
-        } else {
-            emptyList()
-        }
+        val external = if (deviceModel == DeviceModels.OSMO_360) listOf(
+            externalStatus(
+                context,
+                PluginContract.PANORAMA_PACKAGE,
+                PluginContract.PANORAMA_PLUGIN_ID,
+                R.string.module_panorama_name,
+                R.string.module_panorama_summary,
+            ),
+            externalStatus(
+                context,
+                PluginContract.RSDK_PACKAGE,
+                PluginContract.RSDK_PLUGIN_ID,
+                R.string.module_rsdk_name,
+                R.string.module_rsdk_summary,
+            ),
+        ) else emptyList()
         return bundled + external
+    }
+
+    private fun externalStatus(
+        context: Context,
+        packageName: String,
+        moduleId: String,
+        name: Int,
+        description: Int,
+    ): DeviceModuleStatus {
+        val record = ExternalPluginRegistry.packageRecord(packageName)
+        val packageInstalled = runCatching {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(packageName, 0)
+        }.isSuccess
+        return DeviceModuleStatus(
+            id = moduleId,
+            name = context.getString(name),
+            description = context.getString(description),
+            installationState = when {
+                record?.compatible == true -> ModuleInstallationState.INSTALLED
+                record == null && !packageInstalled -> ModuleInstallationState.NOT_INSTALLED
+                else -> ModuleInstallationState.NEEDS_ATTENTION
+            },
+        )
     }
 
     private fun ModuleDescriptor.deviceStatus(context: Context): DeviceModuleStatus? {
@@ -99,9 +120,7 @@ private class BaseModuleManagementLauncher : ModuleManagementLauncher {
             "panorama360" -> R.string.module_panorama_name to R.string.module_panorama_summary
             else -> return null
         }
-        val installed = delivery == ModuleDelivery.CORE ||
-            delivery == ModuleDelivery.DEFAULT ||
-            ModuleSettings.isEnabled(context, id)
+        val installed = delivery == ModuleDelivery.CORE || delivery == ModuleDelivery.DEFAULT
         return DeviceModuleStatus(
             id = id,
             name = context.getString(name),
@@ -113,9 +132,29 @@ private class BaseModuleManagementLauncher : ModuleManagementLauncher {
             },
         )
     }
+}
 
-    private companion object {
-        const val RSDK_MODULE_ID = "rsdk-control"
+private class ExternalPanoramaViewerLauncher : PanoramaVideoViewerLauncher {
+    override fun isAvailable(context: Context): Boolean =
+        ExternalPluginRegistry.hasCapability(PluginContract.CAPABILITY_MEDIA_360_VIEW)
+
+    override fun open(context: Context, request: PanoramaVideoRequest): Boolean {
+        if (request.deviceModel != DeviceModels.OSMO_360 || request.streamCandidates.isEmpty()) return false
+        val streams = request.streamCandidates.filter { stream ->
+            stream.startsWith("http://") || stream.startsWith("https://")
+        }
+        if (streams.isEmpty()) return false
+        val pluginRequest = Bundle().apply {
+            putString(PluginContract.KEY_MEDIA_TITLE, request.title)
+            putString(PluginContract.KEY_MEDIA_DEVICE_MODEL, request.deviceModel)
+            putStringArrayList(PluginContract.KEY_MEDIA_STREAM_CANDIDATES, ArrayList(streams))
+            request.network?.let { putParcelable(PluginContract.KEY_MEDIA_NETWORK, it) }
+        }
+        return ExternalPluginRegistry.openPanel(
+            context,
+            PluginContract.CAPABILITY_MEDIA_360_VIEW,
+            pluginRequest,
+        ) { message -> Toast.makeText(context.applicationContext, message, Toast.LENGTH_LONG).show() }
     }
 }
 

@@ -6,9 +6,5 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:screenOrientation="sensorLandscape"
             android:exported="false" />
-
-        <meta-data
-            android:name="dev.konraditurbe.osmosis.module.panorama360"
-            android:value="dev.konraditurbe.osmosis.panorama.Panorama360Module" />
     </application>
 </manifest>

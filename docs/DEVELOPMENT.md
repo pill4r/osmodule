@@ -12,11 +12,12 @@ The repository is a Gradle multi-project Android build pinned to Android Gradle 
 Gradle 8.14.5, Kotlin 1.9.24, compile/target SDK 36 and Java 21 bytecode. The minimum supported Android
 version is Android 10 (API 29).
 
-It produces two applications:
+It produces three applications:
 
 | Application | Gradle module | Application ID | Purpose |
 |---|---|---|---|
 | osmodule Base | `:app` | `dev.konraditurbe.osmosis` | Camera discovery and local media workflows |
+| 360 Viewer plugin | `:plugins:panorama360` | `dev.konraditurbe.osmosis.plugin.panorama360` | Optional interactive Osmo 360 playback |
 | R-SDK plugin | `:plugins:rsdk` | `dev.konraditurbe.osmosis.plugin.rsdk` | Optional Osmo 360 remote control, preview and GPS sync |
 
 The Base package keeps the historical Osmosis namespace for upgrade and plugin-ABI compatibility.
@@ -29,7 +30,7 @@ The product name and release identity are osmodule.
 | `:app` | Application startup, external-plugin discovery, trust checks and module manager | Camera protocol implementations or plugin UI |
 | `:core:common` | Small Android utilities shared across features | Feature-specific behavior |
 | `:core:module-api` | In-process module contracts and registry | Concrete feature implementations |
-| `:core:plugin-api` | Versioned AIDL, parcelables and bootstrap provider | R-SDK business logic |
+| `:core:plugin-api` | Publishable, versioned AIDL, contract constants and bootstrap provider | Plugin business logic |
 | `:core:camera-session` | Process-local camera session lease | Android UI or a transport implementation |
 | `:core:panorama-renderer` | Calibration decoding and panorama rendering primitives | Media navigation or plugin lifecycle |
 | `:protocol:duml` | DUML frames, CRCs, commands and payload codecs | Android framework dependencies |
@@ -37,8 +38,9 @@ The product name and release identity are osmodule.
 | `:transport:ble` | BLE scanning, model identification and GATT client | Screens or media policy |
 | `:camera:media` | Camera/drone media sessions, manifests, addressing, HTTP and downloads | Activities and module registration |
 | `:feature:media` | Base media screens and the core media module | External-plugin implementation |
-| `:feature:panorama360` | Bundled optional 360-degree media viewer | R-SDK control |
+| `:feature:panorama360` | Plugin-internal 360-degree media viewer | Base application wiring or R-SDK control |
 | `:feature:control-rsdk` | Reusable R-SDK controller, live preview and plugin-owned screens | Base application wiring |
+| `:plugins:panorama360` | 360 Viewer application, Binder service and manifest | Base UI or media browsing |
 | `:plugins:rsdk` | Plugin application, service and manifest | Base UI or direct access to Base internals |
 
 When adding code, place wire formats in `protocol`, Android transports in `transport`, camera media
@@ -48,14 +50,16 @@ application module. A lower layer must not depend on a higher layer to save a fe
 ## Dependency and security boundaries
 
 External plugins are separate APKs. Base must never use `DexClassLoader`, merge plugin permissions,
-or read plugin resources directly. Communication is limited to `:core:plugin-api` and Android-owned
-parcelables. A compatible plugin must:
+or read plugin resources directly. Communication is limited to the published Plugin SDK and
+Android-owned parcelables. The monorepo replaces the SDK Maven coordinate with local
+`:core:plugin-api` source while developing. A compatible official plugin must:
 
 1. expose the documented `dev.konraditurbe.osmosis.plugin.BIND` service action;
 2. hold the signature-level `dev.konraditurbe.osmosis.permission.BIND_PLUGIN` permission;
-3. use the same signing lineage as Base;
-4. return a descriptor compatible with the AIDL protocol version; and
-5. launch private UI only through the immutable `PendingIntent` returned by the service.
+3. match a package, plugin ID and capability policy in `OfficialPluginCatalog`;
+4. use the same signing lineage as Base;
+5. return a descriptor compatible with the AIDL protocol version; and
+6. launch private UI only through the immutable `PendingIntent` returned by the service.
 
 Camera access is exclusive. In-process clients use `CameraSessionCoordinator`; Base also queries the
 plugin runtime state before opening its media transport. Binder errors fail closed.
@@ -68,12 +72,17 @@ Run the repository-wide gate before submitting a change:
 ./gradlew test lint \
   :app:assembleRelease \
   :app:assembleDebug \
+  :plugins:panorama360:assembleRelease \
+  :plugins:panorama360:assembleDebug \
   :plugins:rsdk:assembleRelease \
-  :plugins:rsdk:assembleDebug
+  :plugins:rsdk:assembleDebug \
+  :core:plugin-api:publishPluginSdkPublicationToLocalPluginSdkRepository
 ```
 
-This checks pure JVM modules, Android unit tests, all module Lint tasks, and both build variants of
-both APKs. A checkout without signing material intentionally produces unsigned release APKs.
+This checks pure JVM modules, Android unit tests, all module Lint tasks, both build variants of all
+three APKs, and the publishable SDK AAR. Release builds run R8 code/resource shrinking; custom
+manifest-loaded `AppModule` entries must have a consumer keep rule. A checkout without signing
+material intentionally produces unsigned release APKs.
 
 For faster iteration, target the changed module first:
 
@@ -106,13 +115,15 @@ in the pull request or issue. Never add credentials or an unsanitized capture to
 
 `.github/workflows/ci.yml` runs on every push to `main`, every pull request targeting `main`, and on
 manual dispatch. It needs no signing secrets. The job validates the Gradle Wrapper, restores the
-Gradle cache, runs all JVM and Android unit tests, runs repository-wide Lint, builds both Debug APKs,
+Gradle cache, runs all JVM and Android unit tests, runs repository-wide Lint, builds all three Debug APKs,
 and retains test reports, Lint reports and APKs as workflow artifacts for 14 days. Concurrent runs on
 the same ref are cancelled so that only the newest revision consumes runner time.
 
-Tag pushes trigger `.github/workflows/build_app.yml`. CI validates the Gradle wrapper, runs the full
-quality gate, builds Base and plugin with the same signing configuration, uploads build artifacts and
-creates a draft GitHub release.
+Application tags matching `v*` trigger `.github/workflows/build_app.yml`. CI validates the Gradle
+wrapper, runs the full quality gate, builds Base and both plugins with the same signing configuration,
+uploads build artifacts and creates a draft GitHub release. SDK tags matching `plugin-sdk-v*` trigger
+`.github/workflows/publish_plugin_sdk.yml`, which verifies the tag/version match and publishes the
+release AAR to GitHub Packages.
 
 The required repository secrets are `APP_KEYSTORE`, `STOREPASSWORD`, `KEYPASSWORD` and `KEYALIAS`.
 They are decoded only inside CI and must not be committed. Before tagging a release:
@@ -121,7 +132,7 @@ They are decoded only inside CI and must not be committed. Before tagging a rele
 2. run the full quality gate;
 3. hardware-check the affected camera or plugin workflow;
 4. update README support claims, `ROADMAP.md` and protocol documentation when behavior changed; and
-5. install both signed release APKs together to verify their signing lineage and Binder handshake.
+5. install Base and each affected signed plugin to verify their signing lineage and Binder handshake.
 
 ## Documentation maintenance
 
@@ -133,6 +144,8 @@ Documentation is part of the code change:
   changes;
 - update `DEVELOPMENT.md` and `DEVELOPMENT.zh-CN.md` when the development process or quality gates
   change;
+- update `PLUGIN_SDK.md` and `PLUGIN_SDK.zh-CN.md` when the contract or Maven version changes;
+- update `PLUGIN_MODEL.md` and `PLUGIN_MODEL.zh-CN.md` when trust, signing or distribution changes;
 - update `ROADMAP.md` and `ROADMAP.zh-CN.md` together when priorities or hardware gaps change;
 - update `MEDIA_PROTOCOL.md` and `docs/01-protocol-map.md` when wire behavior is measured;
 - distinguish hardware-verified facts from inference; and

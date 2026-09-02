@@ -25,8 +25,8 @@ class RsdkPluginService : Service() {
         protocolMax = 1,
         capabilities = setOf(
             PluginContract.CAPABILITY_RSDK_PANEL,
-            "camera.rsdk.remote-control",
-            "camera.rsdk.status",
+            PluginContract.CAPABILITY_RSDK_REMOTE_CONTROL,
+            PluginContract.CAPABILITY_RSDK_STATUS,
             PluginContract.CAPABILITY_RSDK_GPS,
             PluginContract.CAPABILITY_CAMERA_SESSION_OWNER,
         ),

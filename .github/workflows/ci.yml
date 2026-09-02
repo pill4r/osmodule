@@ -42,7 +42,9 @@ jobs:
         run: >-
           ./gradlew --no-daemon --stacktrace
           test lint
+          :core:plugin-api:publishPluginSdkPublicationToLocalPluginSdkRepository
           :app:assembleDebug
+          :plugins:panorama360:assembleDebug
           :plugins:rsdk:assembleDebug
 
       - name: Upload test reports
@@ -74,6 +76,7 @@ jobs:
           name: osmodule-debug-apks-${{ github.run_attempt }}
           path: |
             app/build/outputs/apk/debug/*.apk
+            plugins/panorama360/build/outputs/apk/debug/*.apk
             plugins/rsdk/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14

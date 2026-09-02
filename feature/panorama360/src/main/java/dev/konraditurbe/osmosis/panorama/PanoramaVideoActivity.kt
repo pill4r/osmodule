@@ -3,6 +3,9 @@ package dev.konraditurbe.osmosis.panorama
 import android.graphics.Color
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.net.ConnectivityManager
+import android.net.Network
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -44,6 +47,8 @@ class PanoramaVideoActivity : AppCompatActivity() {
     private var scrubbing = false
     private var generation = 0
     private var calibrationRequested = false
+    private var previousNetwork: Network? = null
+    private var boundRequestedNetwork = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +57,7 @@ class PanoramaVideoActivity : AppCompatActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.BLACK),
         )
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        bindRequestedNetwork()
         streams = intent.getStringArrayListExtra(EXTRA_STREAMS).orEmpty()
             .ifEmpty { intent.getStringArrayExtra(EXTRA_STREAMS).orEmpty().toList() }
             .distinct()
@@ -309,7 +315,22 @@ class PanoramaVideoActivity : AppCompatActivity() {
         surface?.release()
         surface = null
         if (::panorama.isInitialized) panorama.release()
+        if (boundRequestedNetwork) {
+            getSystemService(ConnectivityManager::class.java).bindProcessToNetwork(previousNetwork)
+        }
         super.onDestroy()
+    }
+
+    @Suppress("DEPRECATION")
+    private fun bindRequestedNetwork() {
+        val requested = if (Build.VERSION.SDK_INT >= 33) {
+            intent.getParcelableExtra(EXTRA_NETWORK, Network::class.java)
+        } else {
+            intent.getParcelableExtra(EXTRA_NETWORK)
+        } ?: return
+        val connectivity = getSystemService(ConnectivityManager::class.java)
+        previousNetwork = connectivity.boundNetworkForProcess
+        boundRequestedNetwork = connectivity.bindProcessToNetwork(requested)
     }
 
     private fun releasePlayer() {
@@ -322,5 +343,6 @@ class PanoramaVideoActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_TITLE = "panorama.title"
         const val EXTRA_STREAMS = "panorama.streams"
+        const val EXTRA_NETWORK = "panorama.network"
     }
 }

@@ -39,7 +39,9 @@ android {
     buildTypes {
         release {
             if (keystorePropsFile.exists()) signingConfig = signingConfigs.release
-            minifyEnabled = false
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     dependenciesInfo {
@@ -54,7 +56,7 @@ android {
 }
 
 dependencies {
-    implementation project(':core:plugin-api')
+    implementation "dev.konraditurbe.osmodule:plugin-sdk:${rootProject.pluginSdkVersion}"
     implementation project(':core:module-api')
     implementation project(':feature:control-rsdk')
     implementation 'androidx.activity:activity:1.9.3'

@@ -25,7 +25,8 @@ package increases download size, permissions and maintenance surface.
 osmodule follows three rules:
 
 - **Keep the Base APK focused:** camera discovery, pairing, media browsing, preview and download.
-- **Make specialist features optional:** Osmo 360 remote control and GPS sync ship in a separate APK.
+- **Make specialist features optional:** the Osmo 360 viewer, remote control and GPS sync ship in
+  separate APKs.
 - **Keep boundaries enforceable:** modules have explicit Gradle dependencies, and external plugins use
   a versioned, same-signature Binder contract instead of loading foreign code into Base.
 
@@ -36,14 +37,14 @@ auditable local-media client that can grow without turning the Base APK back int
 
 - Camera discovery and pairing over Bluetooth LE.
 - Media grid, thumbnails and low-resolution streaming preview.
-- Optional interactive 360° video viewer with drag-to-look and pinch-to-zoom on Osmo 360; raw OSV
+- Optional, independently installed interactive 360° video viewer with drag-to-look and pinch-to-zoom on Osmo 360; raw OSV
   clips open in it automatically and stream their paired LRF proxy.
 - High-resolution resumable downloads to a user-selected video directory, with
   `Movies/osmodule`, `Pictures/osmodule` and `Download/osmodule` as defaults.
 - In/out trimming with original-quality stream copy.
 - Camera battery, shooting mode and storage status.
 - Multi-camera history, favourites and deletion.
-- Module manager for enabling bundled features and installing signed external modules.
+- Module manager for installing and removing signed optional plugins.
 - Optional Osmo 360-only remote console with low-latency local Wi-Fi preview, R-SDK controls,
   camera status, BLE wake and GPS sync.
 - QuickTransfer media access for supported DJI drones.
@@ -66,22 +67,23 @@ author. Normal Android logcat output remains available to local developers throu
 
 ## Install and connect
 
-Install `app-debug.apk` first. Install `rsdk-debug.apk` only if remote control or GPS sync is needed;
-both APKs must be built with the same signing key. On Xiaomi/Redmi/POCO devices, enable Autostart for
-the R-SDK plugin if HyperOS blocks its Binder service.
+Install `app-debug.apk` first. Install `panorama360-debug.apk` for interactive 360° playback and
+`rsdk-debug.apk` for remote control or GPS sync. Every installed APK must be built with the same
+signing key. On Xiaomi/Redmi/POCO devices, enable Autostart for the R-SDK plugin if HyperOS blocks
+its Binder service.
 
 1. Turn on Bluetooth and Wi-Fi and open osmodule.
 2. Grant the requested nearby-device permissions.
 3. Power on the camera and select it from the Cameras list.
 4. Approve pairing on the camera, then approve Android's camera Wi-Fi join prompt.
-5. Browse, preview or download media. On Osmo 360 clips, open the interactive 360° viewer from Preview.
-6. Open Modules to enable the bundled 360° viewer or install the optional Osmo 360 remote-control plugin.
+5. Open Modules to install the optional 360° viewer and/or Osmo 360 remote-control plugin.
+6. Browse, preview or download media. When the viewer plugin is installed, Osmo 360 OSV clips open in it.
 
 ## Privacy
 
-osmodule communicates with the camera on its local network (`192.168.2.1`). It has no analytics,
-account system, activation service or cloud upload. Android's network security configuration limits
-the cleartext camera connection to that local address.
+osmodule communicates with the camera on its local, internet-less network (normally `192.168.2.1`).
+It has no analytics, account system, activation service or cloud upload. Cleartext HTTP is enabled
+because camera models serve media locally without TLS; application code supplies only camera-local URLs.
 
 ## Build
 
@@ -90,22 +92,26 @@ Requirements: Android SDK 36, JDK 21 and Android 10+ (API 29) on the target devi
 ```sh
 ./gradlew test lint \
   :app:assembleDebug \
+  :plugins:panorama360:assembleDebug \
   :plugins:rsdk:assembleDebug
 ```
 
 Outputs:
 
 - `app/build/outputs/apk/debug/app-debug.apk`
+- `plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk`
 - `plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk`
 
-The plugin is optional. Users who only need media access install the Base APK. Release builds are
-unsigned unless a local `keystore.properties` is supplied; Base and plugin releases must use the same
-signing lineage.
+Both plugins are optional. Users who only need ordinary media access install the Base APK. Release
+builds are unsigned unless a local `keystore.properties` is supplied; Base and plugin releases must
+use the same signing lineage.
 
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — APK boundaries, module graph and plugin trust model.
 - [Development guide](docs/DEVELOPMENT.md) — code ownership, quality gates and release workflow.
+- [Plugin SDK](docs/PLUGIN_SDK.md) — versioned AAR consumption and plugin implementation contract.
+- [Plugin distribution model](docs/PLUGIN_MODEL.md) — official catalog, signing and threat boundary.
 - [Media protocol reference](MEDIA_PROTOCOL.md) — reverse-engineered BLE, DUML and HTTP behavior.
 - [Protocol map](docs/01-protocol-map.md) — packet-level command and transport index.
 - [Roadmap](ROADMAP.md) — completed work, hardware gaps and planned features.
