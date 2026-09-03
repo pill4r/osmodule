@@ -14,6 +14,12 @@
 
     <!-- Camera selector -->
     <string name="cameras">Cameras</string>
+    <string name="cameras_subtitle">Connect, browse and transfer</string>
+    <string name="gps_sync">GPS sync</string>
+    <string name="camera_ready">Ready</string>
+    <string name="camera_offline">Offline</string>
+    <string name="camera_row_description">%1$s, %2$s, %3$s</string>
+    <string name="camera_beta_name">%1$s · Beta</string>
     <string name="remote_control_mode">Remote control for the connected Osmo 360</string>
     <string name="open_remote_control">Remote</string>
     <string name="install_remote_control">Install remote</string>
@@ -81,11 +87,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">the camera</string>
-    <string name="gps_sync_active_banner">🛰️ GPS sync active with %1$s\nMedia browsing is disabled while GPS is streaming. Tap 🛰️ to stop.</string>
-    <string name="gps_sync_connecting_banner">🛰️ GPS sync connecting to %1$s… approve on the camera if it prompts. Tap 🛰️ to cancel.</string>
+    <string name="gps_sync_active_banner">GPS sync active with %1$s\nMedia browsing is paused. Use the GPS button to stop.</string>
+    <string name="gps_sync_connecting_banner">GPS sync connecting to %1$s… approve on the camera if it prompts. Use the GPS button to cancel.</string>
     <string name="gps_sync_starting">GPS sync starting for %1$s — approve on the camera if it prompts</string>
-    <string name="gps_active_select_blocked">GPS sync is active — tap 🛰️ to stop before selecting a camera.</string>
-    <string name="gps_stop_before_browse">Stop GPS sync (tap 🛰️) before browsing media.</string>
+    <string name="gps_active_select_blocked">GPS sync is active — use the GPS button to stop before selecting a camera.</string>
+    <string name="gps_stop_before_browse">Stop GPS sync before browsing media.</string>
     <string name="camera_session_busy">Another camera module is using the connection. Stop it before browsing media.</string>
     <string name="external_module_camera_busy">%1$s is using %2$s. Stop that module before browsing media.</string>
     <string name="external_module_check_failed">Could not verify plugin camera ownership: %1$s</string>
@@ -102,10 +108,16 @@
     <string name="gps_notif_not_healthy">not healthy</string>
 
     <!-- Gallery -->
+    <string name="media_library">Media</string>
+    <string name="gallery_subtitle">Camera library</string>
     <string name="filter_photos">Photos</string>
     <string name="filter_videos">Videos</string>
     <string name="filter_faved">Faved</string>
     <string name="select">Select</string>
+    <string name="select_all">Select all</string>
+    <string name="clear_selection">Clear selection</string>
+    <string name="done">Done</string>
+    <string name="selected_count">Selected %1$d</string>
     <string name="download">Download</string>
     <string name="download_count">Download (%1$d)</string>
     <string name="download_running">Downloading…</string>
@@ -113,6 +125,8 @@
     <string name="loading_burst">Loading burst…</string>
     <string name="not_connected">Not connected</string>
     <string name="no_media_found">%1$s has no media on it</string>
+    <string name="empty_gallery_title">No media here yet</string>
+    <string name="empty_gallery_message">Try another filter, or capture something and reconnect to refresh the library.</string>
     <string name="camera_not_activated_title">%1$s is a brand new camera, not activated</string>
     <string name="camera_not_activated_message">Activate it once in DJI Mimo. Unfortunately this step is mandatory, then you can delete Mimo.</string>
 
@@ -196,8 +210,24 @@
     <string name="cd_play_pause">play/pause</string>
     <string name="cd_fast_forward">fast forward</string>
     <string name="cd_scrub_preview">scrub preview</string>
+    <string name="media_badge_favorite">favorite</string>
+    <string name="media_badge_burst">burst</string>
+    <string name="media_badge_panorama">panorama</string>
+    <string name="media_badge_video">video</string>
+    <string name="media_badge_photo">photo</string>
+    <string name="media_selected">selected</string>
+    <string name="media_not_selected">not selected</string>
+    <string name="media_item_description">%1$s, %2$s, %3$s</string>
+    <string name="close_preview">Close preview</string>
+    <string name="trim_in">In</string>
+    <string name="trim_out">Out</string>
+    <string name="trim_in_value">In %1$s</string>
+    <string name="trim_out_value">Out %1$s</string>
+    <string name="time_zero" translatable="false">0:00</string>
 
     <!-- Status pill -->
+    <string name="battery_percent">%1$d%%</string>
+    <string name="battery_charging_status">Charging · %1$d%%</string>
     <string name="sd_card">SD card</string>
     <string name="internal_storage">Internal</string>
     <string name="storage">Storage</string>

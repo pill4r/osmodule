@@ -3,19 +3,41 @@
     <!-- Gallery toolbar chips: Material 3 outlined, checkable — accent border + app-bg fill when idle,
          accent fill + white label when active. Shared by the Photos/Videos/Faved/Select buttons. -->
     <style name="FilterChip" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">42dp</item>
         <item name="android:checkable">true</item>
         <item name="android:insetTop">0dp</item>
         <item name="android:insetBottom">0dp</item>
         <item name="android:minWidth">0dp</item>
-        <item name="android:minHeight">40dp</item>
+        <item name="android:minHeight">42dp</item>
         <item name="android:paddingLeft">14dp</item>
         <item name="android:paddingRight">14dp</item>
         <item name="android:textSize">13sp</item>
         <item name="android:textColor">@color/filter_chip_text</item>
         <item name="backgroundTint">@color/filter_chip_bg</item>
-        <item name="strokeColor">@color/osmo_accent</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="strokeColor">@color/osmo_outline_soft</item>
         <item name="strokeWidth">1dp</item>
         <item name="iconTint">@color/filter_chip_text</item>
         <item name="rippleColor">@color/osmo_accent</item>
+    </style>
+
+    <style name="OsmoIconButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">12dp</item>
+        <item name="android:text" />
+        <item name="backgroundTint">@color/icon_button_bg</item>
+        <item name="cornerRadius">16dp</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">0dp</item>
+        <item name="iconSize">22dp</item>
+        <item name="rippleColor">@color/osmo_accent</item>
+        <item name="strokeColor">@color/osmo_outline_soft</item>
+        <item name="strokeWidth">1dp</item>
     </style>
 </resources>

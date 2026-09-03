@@ -43,54 +43,71 @@
         android:textSize="13sp"
         android:visibility="gone" />
 
-    <!-- Top overlay: filename · date taken · resolution·fps -->
-    <TextView
-        android:id="@+id/topInfo"
+    <!-- Visible navigation and saved-copy actions; tap the media to hide the whole overlay. -->
+    <LinearLayout
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="top"
-        android:background="#CC111111"
-        android:ellipsize="middle"
-        android:maxLines="2"
-        android:paddingHorizontal="12dp"
-        android:paddingVertical="10dp"
-        android:textColor="#FFFFFF"
-        android:textSize="13sp" />
-
-    <!--
-      Actions on the *saved copy*, so this row only appears once the file exists in the gallery — until
-      then there is no content Uri to hand another app. Sits under topInfo and shows/hides with it.
-    -->
-    <LinearLayout
-        android:id="@+id/savedActions"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="56dp"
-        android:layout_marginEnd="8dp"
+        android:background="@drawable/preview_top_scrim"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:visibility="gone">
+        android:paddingHorizontal="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="26dp">
 
         <ImageButton
-            android:id="@+id/btnShare"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:background="#CC111111"
-            android:contentDescription="@string/action_share"
-            android:padding="10dp"
-            android:src="@android:drawable/ic_menu_share"
+            android:id="@+id/btnClosePreview"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/preview_icon_bg"
+            android:contentDescription="@string/close_preview"
+            android:padding="12dp"
+            android:src="@drawable/ic_arrow_back"
             app:tint="#FFFFFF" />
 
-        <ImageButton
-            android:id="@+id/btnEdit"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginStart="6dp"
-            android:background="#CC111111"
-            android:contentDescription="@string/action_edit"
-            android:padding="10dp"
-            android:src="@android:drawable/ic_menu_edit"
-            app:tint="#FFFFFF" />
+        <TextView
+            android:id="@+id/topInfo"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:ellipsize="middle"
+            android:maxLines="2"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- Saved-copy actions appear only after the item exists in the system gallery. -->
+        <LinearLayout
+            android:id="@+id/savedActions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btnShare"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/preview_icon_bg"
+                android:contentDescription="@string/action_share"
+                android:padding="10dp"
+                android:src="@android:drawable/ic_menu_share"
+                app:tint="#FFFFFF" />
+
+            <ImageButton
+                android:id="@+id/btnEdit"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/preview_icon_bg"
+                android:contentDescription="@string/action_edit"
+                android:padding="10dp"
+                android:src="@android:drawable/ic_menu_edit"
+                app:tint="#FFFFFF" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Bottom overlay: playback + trim + queue -->
@@ -99,11 +116,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="#B3000000"
+        android:background="@drawable/preview_controls_bg"
         android:orientation="vertical"
-        android:paddingHorizontal="12dp"
-        android:paddingTop="6dp"
-        android:paddingBottom="12dp">
+        android:paddingHorizontal="16dp"
+        android:paddingTop="14dp"
+        android:paddingBottom="14dp">
 
         <!-- Video-only controls (scrubber + transport + trim); hidden for photos -->
         <LinearLayout
@@ -125,7 +142,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:minWidth="44dp"
-                    android:text="0:00"
+                    android:text="@string/time_zero"
                     android:textColor="#FFFFFF"
                     android:textSize="12sp" />
 
@@ -142,7 +159,7 @@
                     android:layout_height="wrap_content"
                     android:minWidth="44dp"
                     android:gravity="end"
-                    android:text="0:00"
+                    android:text="@string/time_zero"
                     android:textColor="#FFFFFF"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -155,16 +172,19 @@
                 android:gravity="center"
                 android:orientation="horizontal">
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnMarkIn"
-                    style="?android:attr/borderlessButtonStyle"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="56dp"
-                    android:text="["
+                    android:layout_height="42dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="64dp"
+                    android:text="@string/trim_in"
                     android:textColor="#FFFFFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:textSize="12sp"
+                    app:cornerRadius="14dp"
+                    app:strokeColor="#66FFFFFF" />
 
                 <ImageButton
                     android:id="@+id/btnRew"
@@ -195,16 +215,19 @@
                     android:src="@android:drawable/ic_media_ff"
                     app:tint="#FFFFFF" />
 
-                <Button
+                <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnMarkOut"
-                    style="?android:attr/borderlessButtonStyle"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="56dp"
-                    android:text="]"
+                    android:layout_height="42dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:minWidth="64dp"
+                    android:text="@string/trim_out"
                     android:textColor="#FFFFFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
+                    android:textSize="12sp"
+                    app:cornerRadius="14dp"
+                    app:strokeColor="#66FFFFFF" />
             </LinearLayout>
         </LinearLayout>
 
@@ -238,16 +261,19 @@
             android:text="@string/open_360_viewer"
             android:textColor="#FFFFFF"
             android:visibility="gone"
-            app:strokeColor="#CCFFFFFF" />
+            app:cornerRadius="16dp"
+            app:strokeColor="#66FFFFFF" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnQueue"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="8dp"
+            android:minHeight="52dp"
             android:text="@string/add_to_queue"
             android:textColor="@color/osmo_on_accent"
             app:backgroundTint="@color/osmo_accent"
+            app:cornerRadius="16dp"
             app:icon="@drawable/ic_download"
             app:iconGravity="textStart"
             app:iconTint="@color/osmo_on_accent" />
@@ -264,9 +290,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|start"
-        android:background="#E6000000"
+        android:background="@drawable/scrub_preview_bg"
         android:orientation="vertical"
-        android:padding="2dp"
+        android:padding="3dp"
         android:visibility="gone">
 
         <ImageView
@@ -284,7 +310,7 @@
             android:gravity="center"
             android:paddingHorizontal="8dp"
             android:paddingVertical="3dp"
-            android:text="0:00"
+            android:text="@string/time_zero"
             android:textColor="#FFFFFF"
             android:textSize="12sp" />
     </LinearLayout>

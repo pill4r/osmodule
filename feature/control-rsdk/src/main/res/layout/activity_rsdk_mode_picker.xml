@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/rsdkModePickerRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/rsdk_console_background"
+    android:orientation="vertical"
+    android:paddingBottom="18dp">
+
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/rsdkModePickerToolbar"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@android:color/transparent"
+        app:navigationIcon="@drawable/ic_rsdk_close"
+        app:navigationIconTint="@color/rsdk_text_primary"
+        app:title="@string/rsdk_mode_picker_title"
+        app:titleTextColor="@color/rsdk_text_primary" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="22dp"
+        android:layout_marginTop="8dp"
+        android:text="@string/rsdk_mode_picker_subtitle"
+        android:textColor="@color/rsdk_text_secondary"
+        android:textSize="13sp" />
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/rsdkModeCategoryTabs"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginHorizontal="22dp"
+        android:layout_marginTop="22dp"
+        app:checkedButton="@id/rsdkMode360Tab"
+        app:selectionRequired="true"
+        app:singleSelection="true">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/rsdkMode360Tab"
+            style="@style/RsdkModeCategoryButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="@string/rsdk_mode_category_360" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/rsdkModeSingleLensTab"
+            style="@style/RsdkModeCategoryButton"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:text="@string/rsdk_mode_category_single_lens" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <TextView
+        android:id="@+id/rsdkModeCategoryDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="22dp"
+        android:layout_marginTop="16dp"
+        android:text="@string/rsdk_mode_360_description"
+        android:textColor="@color/rsdk_text_primary"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="10dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:paddingHorizontal="22dp"
+        android:paddingBottom="16dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/rsdkMode360Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout style="@style/RsdkModeChoiceRow">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModePanoramicPhoto"
+                        style="@style/RsdkModeChoiceButton.Start"
+                        android:text="@string/rsdk_mode_panoramic_photo" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModePanoramicVideo"
+                        style="@style/RsdkModeChoiceButton.End"
+                        android:text="@string/rsdk_mode_panoramic_video" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/RsdkModeChoiceRow">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModePanoramicNight"
+                        style="@style/RsdkModeChoiceButton.Start"
+                        android:text="@string/rsdk_mode_picker_super_night" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModeSelfie"
+                        style="@style/RsdkModeChoiceButton.End"
+                        android:text="@string/rsdk_mode_selfie" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/RsdkModeChoiceRow">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModeVortex"
+                        style="@style/RsdkModeChoiceButton.Start"
+                        android:text="@string/rsdk_mode_vortex" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModeStationaryTimelapse"
+                        style="@style/RsdkModeChoiceButton.End"
+                        android:text="@string/rsdk_mode_panoramic_hyperlapse" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/rsdkModeSingleLensGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <LinearLayout style="@style/RsdkModeChoiceRow">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModePhoto"
+                        style="@style/RsdkModeChoiceButton.Start"
+                        android:text="@string/rsdk_mode_photo" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModeUltraWideVideo"
+                        style="@style/RsdkModeChoiceButton.End"
+                        android:text="@string/rsdk_mode_boost_video" />
+                </LinearLayout>
+
+                <LinearLayout style="@style/RsdkModeChoiceRow">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModeSingleLensNight"
+                        style="@style/RsdkModeChoiceButton.Start"
+                        android:text="@string/rsdk_mode_picker_super_night" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkModeVideo"
+                        style="@style/RsdkModeChoiceButton.End"
+                        android:text="@string/rsdk_mode_video" />
+                </LinearLayout>
+            </LinearLayout>
+        </FrameLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="22dp"
+        android:gravity="center"
+        android:text="@string/rsdk_mode_picker_hint"
+        android:textColor="@color/rsdk_text_secondary"
+        android:textSize="11sp" />
+</LinearLayout>

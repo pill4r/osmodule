@@ -1,47 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cell spacing is applied by the RecyclerView ItemDecoration, not a layout_margin here. -->
+<!-- Cell spacing is supplied by RecyclerView.ItemDecoration. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mediaTile"
     android:layout_width="match_parent"
-    android:layout_height="140dp"
-    android:background="#22FFFFFF">
+    android:layout_height="144dp"
+    android:background="@drawable/media_tile_bg"
+    android:foreground="@drawable/media_tile_ripple">
 
     <ImageView
         android:id="@+id/thumb"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:contentDescription="@string/cd_thumbnail" />
+        android:contentDescription="@string/cd_thumbnail"
+        android:scaleType="centerCrop" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/media_scrim" />
+
+    <View
+        android:id="@+id/selectionOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/media_selection_overlay"
+        android:visibility="gone" />
 
     <TextView
         android:id="@+id/name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:background="#99000000"
-        android:paddingHorizontal="4dp"
-        android:paddingVertical="2dp"
-        android:singleLine="true"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:paddingHorizontal="10dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="8dp"
+        android:shadowColor="#80000000"
+        android:shadowDx="0"
+        android:shadowDy="1"
+        android:shadowRadius="2"
         android:textColor="#FFFFFF"
-        android:textSize="10sp" />
+        android:textSize="11sp"
+        android:textStyle="bold" />
 
-    <!-- Media badge: ❤️ when favorited, else a type hint (📷 photo / 📹 video). Text set in the adapter.
-         Sized/centered to mirror the checkbox's ~40dp box on the opposite corner. -->
-    <TextView
-        android:id="@+id/star"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <FrameLayout
+        android:layout_width="34dp"
+        android:layout_height="34dp"
         android:layout_gravity="top|start"
-        android:minWidth="40dp"
-        android:minHeight="40dp"
-        android:gravity="center"
-        android:text="❤️"
-        android:textSize="18sp" />
+        android:layout_margin="8dp"
+        android:background="@drawable/media_badge_bg">
 
-    <CheckBox
+        <ImageView
+            android:id="@+id/star"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="center"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_photo"
+            app:tint="#FFFFFF" />
+    </FrameLayout>
+
+    <com.google.android.material.checkbox.MaterialCheckBox
         android:id="@+id/check"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="top|end"
+        android:buttonTint="@color/media_checkbox_tint"
         android:clickable="false"
-        android:focusable="false" />
+        android:focusable="false"
+        android:gravity="center"
+        android:padding="8dp" />
 </FrameLayout>

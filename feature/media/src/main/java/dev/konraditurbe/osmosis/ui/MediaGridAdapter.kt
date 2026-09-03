@@ -2,7 +2,6 @@ package dev.konraditurbe.osmosis.ui
 
 import android.content.Context
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
@@ -168,22 +167,17 @@ class MediaGridAdapter(
         private val thumb: ImageView = v.findViewById(R.id.thumb)
         private val check: CheckBox = v.findViewById(R.id.check)
         private val name: TextView = v.findViewById(R.id.name)
-        private val star: TextView = v.findViewById(R.id.star)
+        private val badge: ImageView = v.findViewById(R.id.star)
+        private val selectionOverlay: View = v.findViewById(R.id.selectionOverlay)
         private var file: CameraFile? = null
-        private var downX = 0f
-        private var downY = 0f
 
         init {
-            @Suppress("ClickableViewAccessibility")
-            v.setOnTouchListener { _, e ->
-                if (e.actionMasked == MotionEvent.ACTION_DOWN) { downX = e.x; downY = e.y }
-                false   // observe only — the click/long-click listeners still fire
-            }
+            v.clipToOutline = true
             v.setOnClickListener {
                 val f = file ?: return@setOnClickListener
-                // Select mode: a tap in the top-right quadrant toggles the queue checkbox. Bursts are many
-                // frames, so they always open the preview (the user picks the frame there) — no direct queue.
-                if (selectMode && !f.isBurst && inCheckboxZone(downX, downY, it.width, it.height)) toggleQueue(f)
+                // In selection mode the entire tile is the target. Burst groups still open their preview,
+                // because a specific frame has to be chosen before they can enter the queue.
+                if (selectMode && !f.isBurst) toggleQueue(f)
                 else onOpen(f)
             }
             v.setOnLongClickListener { file?.let(onLongPress); true }
@@ -194,22 +188,33 @@ class MediaGridAdapter(
             val queued = selected.containsKey(f.path)
             check.visibility = if (selectMode || queued) View.VISIBLE else View.GONE
             check.isChecked = queued
-            // ❤️ favorited; 🎞️ burst/interval group; 🌐 in-camera panorama (an ordinary .JPG, so only
-            // the record's type byte tells it apart); else a media-type hint (📷 photo / 📹 video).
-            star.text = when {
-                f.starred -> "❤️"
-                f.isBurst -> "🎞️"
-                f.isPanorama -> "🌐"
-                f.isVideo -> "📹"
-                else -> "📷"
-            }
+            selectionOverlay.visibility = if (queued) View.VISIBLE else View.GONE
+            itemView.isActivated = queued
+            badge.setImageResource(when {
+                f.starred -> R.drawable.ic_favorite
+                f.isBurst -> R.drawable.ic_burst
+                f.isPanorama -> R.drawable.ic_panorama
+                f.isVideo -> R.drawable.ic_video
+                else -> R.drawable.ic_photo
+            })
+            badge.contentDescription = context.getString(when {
+                f.starred -> R.string.media_badge_favorite
+                f.isBurst -> R.string.media_badge_burst
+                f.isPanorama -> R.string.media_badge_panorama
+                f.isVideo -> R.string.media_badge_video
+                else -> R.string.media_badge_photo
+            })
+            itemView.contentDescription = context.getString(
+                R.string.media_item_description,
+                f.name,
+                badge.contentDescription,
+                context.getString(if (queued) R.string.media_selected else R.string.media_not_selected),
+            )
             loader.load(f.thumbUrlPath(), thumb)
             val prefix = "%04d".format(f.seq) + (if (selected[f.path] != null) " ✂" else "")
             meta.load(f, name, prefix)
         }
     }
-
-    private fun inCheckboxZone(x: Float, y: Float, w: Int, h: Int) = x >= w * 0.5f && y <= h * 0.5f
 
     // ---- queue / selection --------------------------------------------------
 
@@ -256,6 +261,7 @@ class MediaGridAdapter(
 
     /** The filtered items in display order (no headers) — the list the preview swipes through. */
     fun visibleFiles(): List<CameraFile> = rows.mapNotNull { (it as? Row.Item)?.file }
+    fun visibleItemCount(): Int = rows.count { it is Row.Item }
     fun visibleIndexOf(path: String): Int = visibleFiles().indexOfFirst { it.path == path }
 
     fun selectedEntries(): List<Pair<CameraFile, TrimRange?>> =
@@ -323,6 +329,14 @@ class MediaGridAdapter(
             if (select) selected.putIfAbsent(r.file.path, null)
             else { selected.remove(r.file.path); selectedMember.remove(r.file.path) }
         }
+        notifyDataSetChanged()
+        onQueueChanged?.invoke()
+    }
+
+    fun clearSelection() {
+        if (selected.isEmpty()) return
+        selected.clear()
+        selectedMember.clear()
         notifyDataSetChanged()
         onQueueChanged?.invoke()
     }

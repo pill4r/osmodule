@@ -81,11 +81,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">камера</string>
-    <string name="gps_sync_active_banner">🛰️ Синхронізація GPS активна з %1$s\nПерегляд медіа вимкнено, доки триває передавання GPS. Торкніться 🛰️, щоб зупинити.</string>
-    <string name="gps_sync_connecting_banner">🛰️ Підключення синхронізації GPS до %1$s… підтвердьте на камері, якщо з’явиться запит. Торкніться 🛰️, щоб скасувати.</string>
+    <string name="gps_sync_active_banner">Синхронізація GPS активна з %1$s\nПерегляд медіа призупинено. Скористайтеся кнопкою GPS, щоб зупинити.</string>
+    <string name="gps_sync_connecting_banner">Підключення синхронізації GPS до %1$s… підтвердьте на камері, якщо з’явиться запит. Скористайтеся кнопкою GPS, щоб скасувати.</string>
     <string name="gps_sync_starting">Синхронізація GPS запускається для %1$s — підтвердьте на камері, якщо з’явиться запит</string>
-    <string name="gps_active_select_blocked">Синхронізація GPS активна — торкніться 🛰️, щоб зупинити її перед вибором камери.</string>
-    <string name="gps_stop_before_browse">Зупиніть синхронізацію GPS (торкніться 🛰️) перед переглядом медіа.</string>
+    <string name="gps_active_select_blocked">Синхронізація GPS активна — зупиніть її кнопкою GPS перед вибором камери.</string>
+    <string name="gps_stop_before_browse">Зупиніть синхронізацію GPS перед переглядом медіа.</string>
     <string name="camera_session_busy">Інший модуль камери використовує з’єднання. Зупиніть його перед переглядом медіа.</string>
     <string name="external_module_camera_busy">%1$s використовує %2$s. Зупиніть цей модуль перед переглядом медіафайлів.</string>
     <string name="external_module_check_failed">Не вдалося перевірити використання камери плагіном: %1$s</string>
@@ -208,4 +208,34 @@
     <string name="power_drawing">споживання %1$d mA</string>
     <string name="power_idle">очікування</string>
     <string name="power_docked_suffix"> · у док-станції</string>
+    <!-- Сучасна навігація та доступність -->
+    <string name="cameras_subtitle">Підключення, перегляд і передавання</string>
+    <string name="gps_sync">Синхронізація GPS</string>
+    <string name="camera_ready">Готова</string>
+    <string name="camera_offline">Не в мережі</string>
+    <string name="camera_row_description">%1$s, %2$s, %3$s</string>
+    <string name="camera_beta_name">%1$s · Бета</string>
+    <string name="media_library">Медіа</string>
+    <string name="gallery_subtitle">Медіатека камери</string>
+    <string name="select_all">Вибрати все</string>
+    <string name="clear_selection">Очистити вибір</string>
+    <string name="done">Готово</string>
+    <string name="selected_count">Вибрано: %1$d</string>
+    <string name="empty_gallery_title">Медіафайлів ще немає</string>
+    <string name="empty_gallery_message">Спробуйте інший фільтр або зніміть щось і підключіть камеру знову, щоб оновити медіатеку.</string>
+    <string name="media_badge_favorite">обране</string>
+    <string name="media_badge_burst">серія</string>
+    <string name="media_badge_panorama">панорама</string>
+    <string name="media_badge_video">відео</string>
+    <string name="media_badge_photo">фото</string>
+    <string name="media_selected">вибрано</string>
+    <string name="media_not_selected">не вибрано</string>
+    <string name="media_item_description">%1$s, %2$s, %3$s</string>
+    <string name="close_preview">Закрити попередній перегляд</string>
+    <string name="trim_in">Початок</string>
+    <string name="trim_out">Кінець</string>
+    <string name="trim_in_value">Початок %1$s</string>
+    <string name="trim_out_value">Кінець %1$s</string>
+    <string name="battery_percent">%1$d%%</string>
+    <string name="battery_charging_status">Заряджання · %1$d%%</string>
 </resources>

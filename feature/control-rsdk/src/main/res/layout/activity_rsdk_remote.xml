@@ -1,35 +1,406 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Full-screen camera viewfinder. Frequent remote actions float at the edges; infrequent controls
+     live in the hidden bottom sheet so the live image stays visually dominant. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/rsdkRemoteRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/rsdk_console_background"
-    android:clipToPadding="false"
-    android:fillViewport="true"
     android:keepScreenOn="true">
 
+    <FrameLayout
+        android:id="@+id/rsdkPreviewCard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/rsdk_preview_background">
+
+        <dev.konraditurbe.osmosis.panorama.render.PanoramaSurfaceView
+            android:id="@+id/rsdkPreviewSurface"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/rsdk_preview_content_description"
+            android:keepScreenOn="true" />
+
+        <LinearLayout
+            android:id="@+id/rsdkPreviewEmptyState"
+            android:layout_width="236dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="@drawable/rsdk_empty_state_background"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="24dp">
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/rsdkPreviewProgress"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:indeterminate="true"
+                android:visibility="gone"
+                app:indicatorColor="@color/rsdk_accent"
+                app:indicatorSize="34dp"
+                app:trackThickness="3dp"
+                tools:visibility="visible" />
+
+            <ImageView
+                android:id="@+id/rsdkPreviewIcon"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_rsdk_preview" />
+
+            <TextView
+                android:id="@+id/rsdkPreviewState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:text="@string/rsdk_preview_ready"
+                android:textColor="@color/rsdk_text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/rsdkPreviewDetail"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:gravity="center"
+                android:maxLines="3"
+                android:text="@string/rsdk_preview_start_hint"
+                android:textColor="@color/rsdk_text_secondary"
+                android:textSize="12sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/rsdkPreviewAction"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:layout_marginTop="10dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minHeight="44dp"
+                android:text="@string/rsdk_preview_start"
+                android:textColor="@color/rsdk_accent"
+                app:backgroundTint="@color/rsdk_accent_dark"
+                app:cornerRadius="15dp"
+                app:icon="@drawable/ic_rsdk_preview"
+                app:iconSize="18dp"
+                app:iconTint="@color/rsdk_accent" />
+        </LinearLayout>
+    </FrameLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="190dp"
+        android:layout_gravity="top"
+        android:background="@drawable/rsdk_viewfinder_top_scrim" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="230dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/rsdk_viewfinder_bottom_scrim" />
+
+    <!-- Camera identity and live state. -->
     <LinearLayout
+        android:id="@+id/rsdkTopOverlay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_gravity="top"
         android:orientation="vertical"
-        android:paddingBottom="32dp">
-
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/rsdkToolbar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="56dp"
-            android:paddingHorizontal="4dp"
-            app:navigationIcon="@drawable/ic_rsdk_close"
-            app:navigationIconTint="@color/rsdk_text_primary"
-            app:title="@string/rsdk_remote_title"
-            app:titleTextColor="@color/rsdk_text_primary" />
+        android:paddingHorizontal="10dp"
+        android:paddingTop="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/rsdkToolbar"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:background="@drawable/rsdk_edge_button_surface"
+                android:contentDescription="@string/rsdk_close_remote"
+                app:contentInsetEnd="0dp"
+                app:contentInsetStart="0dp"
+                app:navigationIcon="@drawable/ic_rsdk_close"
+                app:navigationIconTint="@color/rsdk_text_primary" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/rsdkCameraIdentity"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:shadowColor="#99000000"
+                    android:shadowRadius="3"
+                    android:textColor="@color/rsdk_text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    tools:text="Osmo 360" />
+
+                <TextView
+                    android:id="@+id/rsdkConnectionState"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="1dp"
+                    android:ellipsize="middle"
+                    android:maxLines="1"
+                    android:textColor="@color/rsdk_text_secondary"
+                    android:textSize="11sp"
+                    tools:text="Connected · AA:BB:CC:DD:EE:FF" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/rsdkConnectionBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/rsdk_info_badge"
+                android:text="@string/rsdk_state_disconnected"
+                android:textColor="@color/rsdk_text_secondary"
+                android:textSize="10sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:layout_marginStart="64dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/rsdkPreviewLiveBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rsdk_live_badge"
+                android:text="@string/rsdk_preview_live"
+                android:textColor="@color/rsdk_text_primary"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/rsdkPreviewRecordBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="7dp"
+                android:background="@drawable/rsdk_live_badge"
+                android:text="@string/rsdk_capture_recording"
+                android:textColor="@color/rsdk_text_primary"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/rsdkPreviewBattery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/rsdk_info_badge"
+                android:textColor="@color/rsdk_text_primary"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:visibility="gone"
+                tools:text="82%"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/rsdkPreviewRecenter"
+                style="@style/RsdkMiniEdgeButton"
+                android:layout_marginStart="7dp"
+                android:contentDescription="@string/rsdk_preview_recenter"
+                android:visibility="gone"
+                app:icon="@drawable/ic_rsdk_recenter"
+                tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/rsdkPreviewLiveAction"
+                style="@style/RsdkMiniEdgeButton"
+                android:layout_marginStart="7dp"
+                android:contentDescription="@string/rsdk_preview_stop"
+                android:visibility="gone"
+                app:icon="@drawable/ic_rsdk_stop"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/rsdkApprovalHint"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="64dp"
+            android:background="@drawable/rsdk_warning_badge"
+            android:text="@string/rsdk_approval_hint"
+            android:textColor="@color/rsdk_warning"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+    </LinearLayout>
+
+    <!-- Frequent secondary actions hug the left edge. -->
+    <LinearLayout
+        android:id="@+id/rsdkLeftRail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|start"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="12dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/rsdkSnapshot"
+            style="@style/RsdkEdgeButton"
+            android:contentDescription="@string/rsdk_snapshot"
+            app:icon="@drawable/ic_rsdk_snapshot" />
+
+        <TextView style="@style/RsdkEdgeLabel" android:text="@string/rsdk_snapshot" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/rsdkQuickSwitch"
+            style="@style/RsdkEdgeButton"
+            android:layout_marginTop="12dp"
+            android:contentDescription="@string/rsdk_quick_switch"
+            app:icon="@drawable/ic_rsdk_switch" />
+
+        <TextView
+            android:id="@+id/rsdkModeLabel"
+            style="@style/RsdkEdgeLabel"
+            android:text="@string/rsdk_mode_unknown" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/rsdkGps"
+            style="@style/RsdkEdgeButton"
+            android:layout_marginTop="12dp"
+            android:checkable="true"
+            android:contentDescription="@string/rsdk_gps_short"
+            app:icon="@drawable/ic_rsdk_gps" />
+
+        <TextView
+            android:id="@+id/rsdkGpsLabel"
+            style="@style/RsdkEdgeLabel"
+            android:text="@string/rsdk_gps_short" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/rsdkMoreControls"
+            style="@style/RsdkEdgeButton"
+            android:layout_marginTop="12dp"
+            android:contentDescription="@string/rsdk_more_controls"
+            app:icon="@drawable/ic_rsdk_controls" />
+
+        <TextView style="@style/RsdkEdgeLabel" android:text="@string/rsdk_controls_short" />
+    </LinearLayout>
+
+    <!-- One physical-style shutter: the active camera mode decides photo vs. record toggle. -->
+    <LinearLayout
+        android:id="@+id/rsdkRightRail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|end"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingEnd="12dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/rsdkShutter"
+            style="@style/RsdkShutterButton"
+            android:contentDescription="@string/rsdk_shutter"
+            app:icon="@drawable/ic_rsdk_record" />
+
+        <TextView
+            android:id="@+id/rsdkShutterLabel"
+            style="@style/RsdkEdgeLabel"
+            android:text="@string/rsdk_shutter" />
+    </LinearLayout>
+
+    <!-- Lightweight status remains visible without obscuring the center of the image. -->
+    <LinearLayout
+        android:id="@+id/rsdkBottomOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical"
+        android:paddingStart="88dp"
+        android:paddingEnd="96dp"
+        android:paddingBottom="16dp">
+
+        <TextView
+            android:id="@+id/rsdkStatusPrimary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:shadowColor="#B3000000"
+            android:shadowRadius="3"
+            android:textColor="@color/rsdk_text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="Video · recording" />
+
+        <TextView
+            android:id="@+id/rsdkPreviewMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/rsdk_text_secondary"
+            android:textSize="11sp"
+            tools:text="1280 × 720 · H.264 · 30 fps" />
+
+        <TextView
+            android:id="@+id/rsdkCommandResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:accessibilityLiveRegion="polite"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/rsdk_message_background"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:minHeight="38dp"
+            android:text="@string/rsdk_command_ready"
+            android:textColor="@color/rsdk_text_secondary"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:text="Capture succeeded · sequence 42" />
+    </LinearLayout>
+
+    <!-- Advanced controls sheet, opened from the sliders button on the left rail. -->
+    <LinearLayout
+        android:id="@+id/rsdkControlSheet"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="bottom"
+        android:layout_marginTop="104dp"
+        android:background="@drawable/rsdk_control_sheet_background"
+        android:elevation="20dp"
+        android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingHorizontal="18dp">
@@ -41,322 +412,47 @@
                 android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/rsdkCameraIdentity"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:textColor="@color/rsdk_text_primary"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    tools:text="Osmo 360" />
-
-                <TextView
-                    android:id="@+id/rsdkConnectionState"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="middle"
-                    android:maxLines="1"
-                    android:textColor="@color/rsdk_text_secondary"
-                    android:textSize="12sp"
-                    tools:text="AA:BB:CC:DD:EE:FF" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/rsdkConnectionBadge"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
-                android:background="@drawable/rsdk_info_badge"
-                android:text="@string/rsdk_state_disconnected"
-                android:textAllCaps="true"
-                android:textColor="@color/rsdk_text_secondary"
-                android:textSize="11sp"
-                android:textStyle="bold" />
-        </LinearLayout>
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/rsdkPreviewCard"
-            android:layout_width="match_parent"
-            android:layout_height="230dp"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/rsdk_panel"
-            app:cardCornerRadius="22dp"
-            app:strokeColor="@color/rsdk_outline"
-            app:strokeWidth="1dp">
-
-            <FrameLayout
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/rsdk_preview_background">
-
-                <dev.konraditurbe.osmosis.panorama.render.PanoramaSurfaceView
-                    android:id="@+id/rsdkPreviewSurface"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:contentDescription="@string/rsdk_preview_content_description"
-                    android:keepScreenOn="true" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="76dp"
-                    android:layout_gravity="bottom"
-                    android:background="#80090C11" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="12dp">
-
-                    <TextView
-                        android:id="@+id/rsdkPreviewLiveBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/rsdk_live_badge"
-                        android:text="@string/rsdk_preview_live"
-                        android:textColor="@color/rsdk_text_primary"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:visibility="gone"
-                        tools:visibility="visible" />
-
-                    <TextView
-                        android:id="@+id/rsdkPreviewRecordBadge"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:background="@drawable/rsdk_live_badge"
-                        android:text="@string/rsdk_capture_recording"
-                        android:textColor="@color/rsdk_text_primary"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:visibility="gone"
-                        tools:visibility="visible" />
-
-                    <Space
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/rsdkPreviewRecenter"
-                        style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:minHeight="36dp"
-                        android:minWidth="0dp"
-                        android:paddingHorizontal="8dp"
-                        android:text="@string/rsdk_preview_recenter"
-                        android:textColor="@color/rsdk_text_primary"
-                        android:textSize="11sp"
-                        android:visibility="gone"
-                        tools:visibility="visible" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/rsdkPreviewLiveAction"
-                        style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:layout_marginEnd="6dp"
-                        android:minHeight="36dp"
-                        android:minWidth="0dp"
-                        android:paddingHorizontal="8dp"
-                        android:text="@string/rsdk_preview_stop"
-                        android:textColor="@color/rsdk_text_primary"
-                        android:textSize="11sp"
-                        android:visibility="gone"
-                        tools:visibility="visible" />
-
-                    <TextView
-                        android:id="@+id/rsdkPreviewBattery"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:background="@drawable/rsdk_info_badge"
-                        android:textColor="@color/rsdk_text_primary"
-                        android:textSize="11sp"
-                        android:textStyle="bold"
-                        android:visibility="gone"
-                        tools:text="82%"
-                        tools:visibility="visible" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/rsdkPreviewEmptyState"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="28dp">
+                    android:text="@string/rsdk_controls_title"
+                    android:textColor="@color/rsdk_text_primary"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
 
-                    <com.google.android.material.progressindicator.CircularProgressIndicator
-                        android:id="@+id/rsdkPreviewProgress"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:indeterminate="true"
-                        android:visibility="gone"
-                        app:indicatorColor="@color/rsdk_accent"
-                        app:indicatorSize="32dp"
-                        app:trackThickness="3dp"
-                        tools:visibility="visible" />
-
-                    <ImageView
-                        android:id="@+id/rsdkPreviewIcon"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:contentDescription="@null"
-                        android:src="@drawable/ic_rsdk_preview"
-                        android:visibility="visible" />
-
-                    <TextView
-                        android:id="@+id/rsdkPreviewState"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:gravity="center"
-                        android:text="@string/rsdk_preview_ready"
-                        android:textColor="@color/rsdk_text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/rsdkPreviewDetail"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:gravity="center"
-                        android:maxLines="2"
-                        android:text="@string/rsdk_preview_start_hint"
-                        android:textColor="@color/rsdk_text_secondary"
-                        android:textSize="11sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/rsdkPreviewAction"
-                        style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="40dp"
-                        android:layout_marginTop="5dp"
-                        android:minHeight="40dp"
-                        android:text="@string/rsdk_preview_start"
-                        android:textColor="@color/rsdk_accent"
-                        app:icon="@drawable/ic_rsdk_preview"
-                        app:iconSize="18dp"
-                        app:iconTint="@color/rsdk_accent" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="bottom"
-                    android:gravity="bottom"
-                    android:orientation="vertical"
-                    android:paddingHorizontal="14dp"
-                    android:paddingBottom="12dp">
-
-                    <TextView
-                        android:id="@+id/rsdkStatusPrimary"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:textColor="@color/rsdk_text_primary"
-                        android:textSize="15sp"
-                        android:textStyle="bold"
-                        tools:text="Video · recording" />
-
-                    <TextView
-                        android:id="@+id/rsdkPreviewMeta"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:textColor="@color/rsdk_text_secondary"
-                        android:textSize="11sp"
-                        tools:text="1280 × 720 · H.264 · 30 fps" />
-                </LinearLayout>
-            </FrameLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:id="@+id/rsdkApprovalHint"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="8dp"
-            android:text="@string/rsdk_approval_hint"
-            android:textColor="@color/rsdk_warning"
-            android:textSize="11sp"
-            android:visibility="gone"
-            tools:visibility="visible" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="14dp"
-            android:orientation="horizontal">
+                    android:text="@string/rsdk_controls_subtitle"
+                    android:textColor="@color/rsdk_text_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
 
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkCapture"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginEnd="6dp"
-                android:layout_weight="1"
-                android:text="@string/rsdk_capture"
-                android:textColor="@color/rsdk_text_primary"
-                app:backgroundTint="@color/rsdk_accent_dark"
-                app:cornerRadius="16dp"
-                app:icon="@drawable/ic_rsdk_capture"
-                app:iconTint="@color/rsdk_text_primary" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkRecord"
-                android:layout_width="0dp"
-                android:layout_height="56dp"
-                android:layout_marginStart="6dp"
-                android:layout_weight="1"
-                android:text="@string/rsdk_record_start"
-                android:textColor="@color/rsdk_text_primary"
-                app:backgroundTint="@color/rsdk_record"
-                app:cornerRadius="16dp"
-                app:icon="@drawable/ic_rsdk_record"
-                app:iconTint="@color/rsdk_text_primary" />
+                android:id="@+id/rsdkCloseControls"
+                style="@style/RsdkMiniEdgeButton"
+                android:contentDescription="@string/rsdk_close_controls"
+                app:icon="@drawable/ic_rsdk_close" />
         </LinearLayout>
 
-        <com.google.android.material.card.MaterialCardView
+        <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="12dp"
-            app:cardBackgroundColor="@color/rsdk_panel"
-            app:cardCornerRadius="18dp"
-            app:strokeColor="@color/rsdk_outline"
-            app:strokeWidth="1dp">
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:paddingHorizontal="18dp"
+            android:paddingBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/rsdk_camera_status"
-                    android:textColor="@color/rsdk_text_primary"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                android:orientation="vertical">
 
                 <TextView
                     android:id="@+id/rsdkStatusSecondary"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
+                    android:background="@drawable/rsdk_sheet_section_background"
                     android:lineSpacingExtra="3dp"
                     android:text="@string/rsdk_status_waiting"
                     android:textColor="@color/rsdk_text_secondary"
@@ -372,202 +468,111 @@
                     android:visibility="gone"
                     tools:text="Firmware 01.02.00.10 · R-SDK 1.0"
                     tools:visibility="visible" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
 
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="12dp"
-            app:cardBackgroundColor="@color/rsdk_panel"
-            app:cardCornerRadius="18dp"
-            app:strokeColor="@color/rsdk_outline"
-            app:strokeWidth="1dp">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                    <TextView
+                        style="@style/RsdkSheetSectionLabel"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="@string/rsdk_shooting_mode" />
+
+                    <TextView
+                        android:id="@+id/rsdkCurrentMode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:text="@string/rsdk_current_mode_unknown"
+                        android:textColor="@color/rsdk_accent"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/rsdkOpenModePicker"
+                    style="@style/RsdkSheetButton"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="7dp"
+                    android:text="@string/rsdk_mode_picker_title"
+                    app:icon="@drawable/ic_rsdk_switch"
+                    app:iconGravity="textStart"
+                    app:iconTint="@color/rsdk_accent" />
+
+                <TextView
+                    style="@style/RsdkSheetSectionLabel"
+                    android:layout_marginTop="18dp"
+                    android:text="@string/rsdk_device_actions" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="7dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkConnect"
+                        style="@style/RsdkSheetButton"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="@string/rsdk_connect"
+                        android:textColor="@color/rsdk_console_background"
+                        app:backgroundTint="@color/rsdk_accent" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkWake"
+                        style="@style/RsdkSheetButton"
+                        android:layout_width="0dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="@string/rsdk_wake" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkQueryVersion"
+                        style="@style/RsdkSheetButton"
+                        android:layout_width="0dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="@string/rsdk_query_version" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkSleep"
+                        style="@style/RsdkSheetButton"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:text="@string/rsdk_sleep" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/rsdkRestart"
+                        style="@style/RsdkSheetButton"
+                        android:layout_width="0dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="@string/rsdk_restart"
+                        android:textColor="@color/rsdk_record" />
+                </LinearLayout>
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@string/rsdk_shooting_mode"
-                    android:textColor="@color/rsdk_text_primary"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <Spinner
-                    android:id="@+id/rsdkModeSpinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:layout_marginTop="6dp"
-                    android:backgroundTint="@color/rsdk_accent"
-                    android:popupBackground="@color/rsdk_panel_raised" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/rsdkApplyMode"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/rsdk_apply_mode"
-                    android:textColor="@color/rsdk_accent"
-                    app:strokeColor="@color/rsdk_outline" />
+                    android:layout_marginTop="18dp"
+                    android:gravity="center"
+                    android:lineSpacingExtra="2dp"
+                    android:text="@string/rsdk_best_effort_notice"
+                    android:textColor="@color/rsdk_text_secondary"
+                    android:textSize="10sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="20dp"
-            android:text="@string/rsdk_quick_actions"
-            android:textAllCaps="true"
-            android:textColor="@color/rsdk_text_secondary"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkSnapshot"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:text="@string/rsdk_snapshot"
-                android:textColor="@color/rsdk_text_primary"
-                app:strokeColor="@color/rsdk_outline" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkQuickSwitch"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="4dp"
-                android:layout_weight="1"
-                android:text="@string/rsdk_quick_switch"
-                android:textColor="@color/rsdk_text_primary"
-                app:strokeColor="@color/rsdk_outline" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkGps"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_weight="1"
-                android:checkable="true"
-                android:text="@string/rsdk_gps_short"
-                android:textColor="@color/rsdk_text_primary"
-                app:strokeColor="@color/rsdk_outline" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="16dp"
-            android:text="@string/rsdk_device_actions"
-            android:textAllCaps="true"
-            android:textColor="@color/rsdk_text_secondary"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkConnect"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:text="@string/rsdk_connect"
-                android:textColor="@color/rsdk_console_background"
-                app:backgroundTint="@color/rsdk_accent" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkWake"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="4dp"
-                android:layout_weight="1"
-                android:text="@string/rsdk_wake"
-                android:textColor="@color/rsdk_text_primary"
-                app:strokeColor="@color/rsdk_outline" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkQueryVersion"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_weight="1"
-                android:text="@string/rsdk_query_version"
-                android:textColor="@color/rsdk_text_primary"
-                app:strokeColor="@color/rsdk_outline" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkSleep"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/rsdk_sleep"
-                android:textColor="@color/rsdk_text_secondary" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/rsdkRestart"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="@string/rsdk_restart"
-                android:textColor="@color/rsdk_record" />
-        </LinearLayout>
-
-        <TextView
-            android:id="@+id/rsdkCommandResult"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="4dp"
-            android:background="@drawable/rsdk_message_background"
-            android:minHeight="42dp"
-            android:text="@string/rsdk_command_ready"
-            android:textColor="@color/rsdk_text_secondary"
-            android:textSize="12sp"
-            tools:text="Capture succeeded · sequence 42" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="20dp"
-            android:layout_marginTop="12dp"
-            android:gravity="center"
-            android:text="@string/rsdk_best_effort_notice"
-            android:textColor="@color/rsdk_text_secondary"
-            android:textSize="11sp" />
+        </androidx.core.widget.NestedScrollView>
     </LinearLayout>
-</androidx.core.widget.NestedScrollView>
+</FrameLayout>

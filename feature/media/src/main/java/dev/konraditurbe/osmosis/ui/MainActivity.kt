@@ -82,6 +82,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     private lateinit var chipVideos: MaterialButton
     private lateinit var chipFaved: MaterialButton
     private lateinit var chipSelect: MaterialButton
+    private lateinit var chipSelectAll: MaterialButton
     private lateinit var overallBar: ProgressBar
     private lateinit var fileBar: ProgressBar
     private lateinit var overallText: TextView
@@ -352,6 +353,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         statusPill = findViewById(R.id.statusPill)
         savedCameras = SavedCameras(getSharedPreferences("osmosis", MODE_PRIVATE))
         findViewById<View>(R.id.btnRescan).setOnClickListener { startCameraScan(select = true) }
+        findViewById<View>(R.id.btnBackToCameras).setOnClickListener { switchToSelector() }
         cameraList.setOnItemClickListener { _, _, pos, _ -> onCamRowClick(pos) }
         cameraList.setOnItemLongClickListener { _, _, pos, _ -> onCamRowLongClick(pos) }
         findViewById<View>(R.id.fabDownload).setOnClickListener { onDownloadClicked() }
@@ -1437,6 +1439,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             grid.adapter = null
             imageLoader?.shutdown(); imageLoader = null
             metaLoader?.shutdown(); metaLoader = null
+            findViewById<View>(R.id.emptyGallery).visibility = View.VISIBLE
             updateDownloadFab()        // nothing to download; drop any queue carried from the old camera
             // "No media" and "media the camera will not list" look identical on screen, and the
             // camera itself can tell them apart: it reports each store's used space in the same
@@ -1452,9 +1455,9 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             } else {
                 logLine("No media found on camera.")
             }
-            toast(getString(R.string.no_media_found, pillName()))
             return
         }
+        findViewById<View>(R.id.emptyGallery).visibility = View.GONE
         imageLoader?.shutdown()
         metaLoader?.shutdown()
         val loader = ImageLoader(http, ::logLine)
@@ -1520,14 +1523,22 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         chipVideos = findViewById(R.id.btnFilterVideos)
         chipFaved = findViewById(R.id.btnFilterFaved)
         chipSelect = findViewById(R.id.btnSelect)
-        chipPhotos.setOnClickListener { if (chipPhotos.isChecked) chipVideos.isChecked = false; applyChipsToAdapter() }
-        chipVideos.setOnClickListener { if (chipVideos.isChecked) chipPhotos.isChecked = false; applyChipsToAdapter() }
-        chipFaved.setOnClickListener { adapter?.setFavedOnly(chipFaved.isChecked) }
-        chipSelect.setOnClickListener { adapter?.setSelectMode(chipSelect.isChecked); updateDownloadFab() }
+        chipSelectAll = findViewById(R.id.btnSelectAll)
+        chipPhotos.setOnClickListener { if (chipPhotos.isChecked) chipVideos.isChecked = false; applyChipsToAdapter(); updateEmptyGallery() }
+        chipVideos.setOnClickListener { if (chipVideos.isChecked) chipPhotos.isChecked = false; applyChipsToAdapter(); updateEmptyGallery() }
+        chipFaved.setOnClickListener { adapter?.setFavedOnly(chipFaved.isChecked); updateEmptyGallery() }
+        chipSelect.setOnClickListener {
+            adapter?.setSelectMode(chipSelect.isChecked)
+            updateDownloadFab()
+        }
+        chipSelectAll.setOnClickListener {
+            val ad = adapter ?: return@setOnClickListener
+            if (ad.selectedCount() > 0) ad.clearSelection() else ad.selectAllVisible(true)
+        }
         chipSelect.setOnLongClickListener {
             val ad = adapter ?: return@setOnLongClickListener true
             if (!chipSelect.isChecked) { chipSelect.isChecked = true; ad.setSelectMode(true) }
-            ad.selectAllVisible(ad.selectedCount() == 0)   // nothing queued → select all visible, else clear
+            if (ad.selectedCount() > 0) ad.clearSelection() else ad.selectAllVisible(true)
             true
         }
     }
@@ -1545,7 +1556,18 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
                 // Belt to the guard's braces: the guard is what actually prevents a second run, this
                 // just stops the button looking tappable while one is in flight.
                 isEnabled = !downloadRunning
+                visibility = if (n > 0 || downloadRunning) View.VISIBLE else View.GONE
             }
+        if (::chipSelect.isInitialized) {
+            chipSelect.text = when {
+                !chipSelect.isChecked -> getString(R.string.select)
+                n > 0 -> getString(R.string.selected_count, n)
+                else -> getString(R.string.done)
+            }
+            chipSelectAll.visibility = if (chipSelect.isChecked) View.VISIBLE else View.GONE
+            chipSelectAll.isChecked = false
+            chipSelectAll.text = getString(if (n > 0) R.string.clear_selection else R.string.select_all)
+        }
         updateBulkDeleteFab()
     }
 
@@ -1567,6 +1589,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     private fun resetGalleryChips() {
         chipPhotos.isChecked = false; chipVideos.isChecked = false
         chipFaved.isChecked = false; chipSelect.isChecked = false
+        chipSelectAll.visibility = View.GONE
     }
 
     /** Push the chips' current state onto the active adapter. */
@@ -1579,6 +1602,12 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         })
         ad.setFavedOnly(chipFaved.isChecked)
         ad.setSelectMode(chipSelect.isChecked)
+    }
+
+    private fun updateEmptyGallery() {
+        val ad = adapter
+        findViewById<View>(R.id.emptyGallery).visibility =
+            if (ad != null && ad.visibleItemCount() == 0) View.VISIBLE else View.GONE
     }
 
     // ---- lazy grid pagination (pull up past the last row to load older pages) --------------------

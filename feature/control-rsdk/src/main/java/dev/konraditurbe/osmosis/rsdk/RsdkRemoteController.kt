@@ -1,6 +1,7 @@
 package dev.konraditurbe.osmosis.rsdk
 
 import android.content.Context
+import android.util.Log
 import dev.konraditurbe.osmosis.modules.CameraRemoteCommand
 import dev.konraditurbe.osmosis.modules.CameraRemoteCommandOutcome
 import dev.konraditurbe.osmosis.modules.CameraRemoteCommandResult
@@ -169,6 +170,11 @@ internal class RsdkRemoteController : CameraRemoteControl, RsdkSessionHub.Listen
     }
 
     override fun onCommandResult(result: RsdkCommandResult) {
+        Log.i(
+            LOG_TAG,
+            "${result.command}: ${result.outcome}, seq=${result.sequence}, " +
+                "code=${result.returnCode}, detail=${result.detail}",
+        )
         dispatch(CameraRemoteCommandResult(
             command = result.command.toPublic(),
             outcome = result.outcome.toPublic(),
@@ -196,6 +202,10 @@ internal class RsdkRemoteController : CameraRemoteControl, RsdkSessionHub.Listen
             version = null,
             lastError = reason,
         ))
+    }
+
+    override fun onLog(message: String) {
+        Log.i(LOG_TAG, message)
     }
 
     private fun updateState(state: CameraRemoteState) {
@@ -227,6 +237,7 @@ internal class RsdkRemoteController : CameraRemoteControl, RsdkSessionHub.Listen
     }
 
     private companion object {
+        const val LOG_TAG = "osmoduleRsdk"
         const val REMOTE_CONSUMER = "remote-control"
     }
 }

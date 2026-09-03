@@ -66,6 +66,7 @@ class MediaPreviewActivity : AppCompatActivity() {
     private var savedUri: android.net.Uri? = null
     private lateinit var spinner: ProgressBar
     private lateinit var statusText: TextView
+    private lateinit var topBar: View
     private lateinit var topInfo: TextView
     private lateinit var btnQueue: Button
     private lateinit var btnPanorama360: Button
@@ -127,12 +128,14 @@ class MediaPreviewActivity : AppCompatActivity() {
             navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.BLACK),
         )
         setContentView(R.layout.activity_preview)
+        topBar = findViewById(R.id.topBar)
+        controls = findViewById(R.id.controls)
 
         // The media itself is meant to run full-bleed under the bars; only the overlays get inset. The
         // insets are ADDED to each overlay's own layout padding, and the base padding is captured once
         // so re-dispatches (rotation, IME, bar show/hide) don't accumulate.
-        val topOverlays = listOf<View>(findViewById(R.id.topInfo), findViewById(R.id.savedActions))
-        val bottomOverlays = listOf<View>(findViewById(R.id.controls))
+        val topOverlays = listOf(topBar)
+        val bottomOverlays = listOf(controls)
         val basePadding = (topOverlays + bottomOverlays).associateWith {
             intArrayOf(it.paddingLeft, it.paddingTop, it.paddingRight, it.paddingBottom)
         }
@@ -163,6 +166,7 @@ class MediaPreviewActivity : AppCompatActivity() {
         statusText = findViewById(R.id.statusText)
         topInfo = findViewById(R.id.topInfo)
         savedActions = findViewById(R.id.savedActions)
+        findViewById<View>(R.id.btnClosePreview).setOnClickListener { finish() }
         findViewById<View>(R.id.btnShare).setOnClickListener { sendSavedCopy(Intent.ACTION_SEND) }
         findViewById<View>(R.id.btnEdit).setOnClickListener { sendSavedCopy(Intent.ACTION_EDIT) }
         btnQueue = findViewById(R.id.btnQueue)
@@ -171,7 +175,6 @@ class MediaPreviewActivity : AppCompatActivity() {
         btnMarkIn = findViewById(R.id.btnMarkIn)
         btnMarkOut = findViewById(R.id.btnMarkOut)
         trimRow = findViewById(R.id.trimRow)
-        controls = findViewById(R.id.controls)
         seekBar = findViewById(R.id.seekBar)
         seekBar.setMarkColor(ContextCompat.getColor(this, R.color.osmo_accent))
         txtCur = findViewById(R.id.txtCur)
@@ -283,6 +286,7 @@ class MediaPreviewActivity : AppCompatActivity() {
         trimRow.visibility = if (file.supportsTrimming) View.VISIBLE else View.GONE
         btnPanorama360.visibility = if (canOpenPanorama()) View.VISIBLE else View.GONE
         controls.visibility = View.VISIBLE
+        topBar.visibility = View.VISIBLE
         topInfo.visibility = View.VISIBLE
 
         renderTop()
@@ -451,7 +455,7 @@ class MediaPreviewActivity : AppCompatActivity() {
         // title overlay, since a tap-to-hide should clear the frame completely.
         savedUri = savedUriCache[name]
         savedActions.visibility =
-            if (savedUri != null && topInfo.visibility == View.VISIBLE) View.VISIBLE else View.GONE
+            if (savedUri != null && topBar.visibility == View.VISIBLE) View.VISIBLE else View.GONE
     }
 
     /**
@@ -527,8 +531,10 @@ class MediaPreviewActivity : AppCompatActivity() {
     }
 
     private fun updateTrimUi() {
-        btnMarkIn.text = if (trimStartMs >= 0) "[ ${mmss(trimStartMs)}" else "["
-        btnMarkOut.text = if (trimEndMs >= 0) "] ${mmss(trimEndMs)}" else "]"
+        btnMarkIn.text = if (trimStartMs >= 0) getString(R.string.trim_in_value, mmss(trimStartMs))
+            else getString(R.string.trim_in)
+        btnMarkOut.text = if (trimEndMs >= 0) getString(R.string.trim_out_value, mmss(trimEndMs))
+            else getString(R.string.trim_out)
         refreshQueueButton()   // adding a trim re-enables the button even if the whole file is saved
     }
 
@@ -555,8 +561,9 @@ class MediaPreviewActivity : AppCompatActivity() {
      *  The scrubber/transport/trim block is video-only, but the bar itself carries the queue button,
      *  so a photo gets it back on the second tap like everything else does. */
     private fun toggleControls() {
-        val show = topInfo.visibility != View.VISIBLE
-        topInfo.visibility = if (show) View.VISIBLE else View.GONE
+        val show = topBar.visibility != View.VISIBLE
+        topBar.visibility = if (show) View.VISIBLE else View.GONE
+        topInfo.visibility = View.VISIBLE
         savedActions.visibility = if (show && savedUri != null) View.VISIBLE else View.GONE
         controls.visibility = if (show) View.VISIBLE else View.GONE
         trimRow.visibility = if (show && file.supportsTrimming) View.VISIBLE else View.GONE

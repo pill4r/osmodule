@@ -81,11 +81,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">die Kamera</string>
-    <string name="gps_sync_active_banner">🛰️ GPS-Sync aktiv mit %1$s\nDas Durchsuchen von Medien ist deaktiviert, solange GPS streamt. Tippe auf 🛰️ zum Stoppen.</string>
-    <string name="gps_sync_connecting_banner">🛰️ GPS-Sync verbindet mit %1$s… bestätige an der Kamera, falls sie fragt. Tippe auf 🛰️ zum Abbrechen.</string>
+    <string name="gps_sync_active_banner">GPS-Sync aktiv mit %1$s\nDas Durchsuchen von Medien ist pausiert. Tippe zum Stoppen auf die GPS-Schaltfläche.</string>
+    <string name="gps_sync_connecting_banner">GPS-Sync verbindet mit %1$s… bestätige an der Kamera, falls sie fragt. Tippe zum Abbrechen auf die GPS-Schaltfläche.</string>
     <string name="gps_sync_starting">GPS-Sync startet für %1$s – bestätige an der Kamera, falls sie fragt</string>
-    <string name="gps_active_select_blocked">GPS-Sync ist aktiv – tippe auf 🛰️ zum Stoppen, bevor du eine Kamera auswählst.</string>
-    <string name="gps_stop_before_browse">Stoppe GPS-Sync (tippe auf 🛰️), bevor du Medien durchsuchst.</string>
+    <string name="gps_active_select_blocked">GPS-Sync ist aktiv – stoppe ihn über die GPS-Schaltfläche, bevor du eine Kamera auswählst.</string>
+    <string name="gps_stop_before_browse">Stoppe GPS-Sync, bevor du Medien durchsuchst.</string>
     <string name="camera_session_busy">Ein anderes Kameramodul verwendet die Verbindung. Beende es, bevor du Medien durchsuchst.</string>
     <string name="external_module_camera_busy">%1$s verwendet %2$s. Beende dieses Modul, bevor du Medien durchsuchst.</string>
     <string name="external_module_check_failed">Die Kameranutzung durch das Plugin konnte nicht geprüft werden: %1$s</string>
@@ -208,4 +208,34 @@
     <string name="power_drawing">zieht %1$d mA</string>
     <string name="power_idle">inaktiv</string>
     <string name="power_docked_suffix"> · angedockt</string>
+    <!-- Modern navigation and accessibility -->
+    <string name="cameras_subtitle">Verbinden, durchsuchen und übertragen</string>
+    <string name="gps_sync">GPS-Synchronisierung</string>
+    <string name="camera_ready">Bereit</string>
+    <string name="camera_offline">Offline</string>
+    <string name="camera_row_description">%1$s, %2$s, %3$s</string>
+    <string name="camera_beta_name">%1$s · Beta</string>
+    <string name="media_library">Medien</string>
+    <string name="gallery_subtitle">Kameramedien</string>
+    <string name="select_all">Alle auswählen</string>
+    <string name="clear_selection">Auswahl aufheben</string>
+    <string name="done">Fertig</string>
+    <string name="selected_count">%1$d ausgewählt</string>
+    <string name="empty_gallery_title">Noch keine Medien</string>
+    <string name="empty_gallery_message">Ändere den Filter oder nimm etwas auf und verbinde die Kamera erneut, um die Medien zu aktualisieren.</string>
+    <string name="media_badge_favorite">Favorit</string>
+    <string name="media_badge_burst">Serienaufnahme</string>
+    <string name="media_badge_panorama">Panorama</string>
+    <string name="media_badge_video">Video</string>
+    <string name="media_badge_photo">Foto</string>
+    <string name="media_selected">ausgewählt</string>
+    <string name="media_not_selected">nicht ausgewählt</string>
+    <string name="media_item_description">%1$s, %2$s, %3$s</string>
+    <string name="close_preview">Vorschau schließen</string>
+    <string name="trim_in">In</string>
+    <string name="trim_out">Out</string>
+    <string name="trim_in_value">In %1$s</string>
+    <string name="trim_out_value">Out %1$s</string>
+    <string name="battery_percent">%1$d%%</string>
+    <string name="battery_charging_status">Lädt · %1$d%%</string>
 </resources>

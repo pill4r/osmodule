@@ -13,6 +13,12 @@
 
     <!-- Camera selector -->
     <string name="cameras">相机</string>
+    <string name="cameras_subtitle">连接、浏览与传输</string>
+    <string name="gps_sync">GPS 同步</string>
+    <string name="camera_ready">可连接</string>
+    <string name="camera_offline">离线</string>
+    <string name="camera_row_description">%1$s，%2$s，%3$s</string>
+    <string name="camera_beta_name">%1$s · 测试机型</string>
     <string name="remote_control_mode">控制当前连接的 Osmo 360</string>
     <string name="open_remote_control">远控</string>
     <string name="install_remote_control">安装远控</string>
@@ -81,11 +87,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">相机</string>
-    <string name="gps_sync_active_banner">🛰️ 正在与 %1$s 进行 GPS 同步\nGPS 流式传输期间无法浏览媒体。点按 🛰️ 停止。</string>
-    <string name="gps_sync_connecting_banner">🛰️ 正在连接 %1$s 进行 GPS 同步…如相机弹出提示请批准。点按 🛰️ 取消。</string>
+    <string name="gps_sync_active_banner">正在与 %1$s 进行 GPS 同步\n媒体浏览已暂停，可点按 GPS 按钮停止。</string>
+    <string name="gps_sync_connecting_banner">正在连接 %1$s 进行 GPS 同步…如相机弹出提示请批准，可点按 GPS 按钮取消。</string>
     <string name="gps_sync_starting">正在为 %1$s 启动 GPS 同步——如相机弹出提示请批准</string>
-    <string name="gps_active_select_blocked">GPS 同步进行中——请先点按 🛰️ 停止，再选择相机。</string>
-    <string name="gps_stop_before_browse">请先停止 GPS 同步（点按 🛰️），再浏览媒体。</string>
+    <string name="gps_active_select_blocked">GPS 同步进行中——请先通过 GPS 按钮停止，再选择相机。</string>
+    <string name="gps_stop_before_browse">请先停止 GPS 同步，再浏览媒体。</string>
     <string name="camera_session_busy">另一个相机模块正在使用连接，请先停止它再浏览媒体。</string>
     <string name="external_module_camera_busy">%1$s 正在使用 %2$s。请先停止该模块，再浏览媒体。</string>
     <string name="external_module_check_failed">无法确认插件的相机占用状态：%1$s</string>
@@ -102,10 +108,16 @@
     <string name="gps_notif_not_healthy">异常</string>
 
     <!-- Gallery -->
+    <string name="media_library">媒体</string>
+    <string name="gallery_subtitle">相机媒体库</string>
     <string name="filter_photos">照片</string>
     <string name="filter_videos">视频</string>
     <string name="filter_faved">已收藏</string>
     <string name="select">选择</string>
+    <string name="select_all">全选</string>
+    <string name="clear_selection">清空选择</string>
+    <string name="done">完成</string>
+    <string name="selected_count">已选 %1$d 项</string>
     <string name="download">下载</string>
     <string name="download_count">下载（%1$d）</string>
     <string name="download_running">正在下载…</string>
@@ -113,6 +125,8 @@
     <string name="loading_burst">正在加载连拍…</string>
     <string name="not_connected">未连接</string>
     <string name="no_media_found">%1$s 上没有媒体文件</string>
+    <string name="empty_gallery_title">这里还没有媒体</string>
+    <string name="empty_gallery_message">可尝试切换筛选条件，或拍摄后重新连接以刷新媒体库。</string>
     <string name="camera_not_activated_title">%1$s 是一台全新相机，尚未激活</string>
     <string name="camera_not_activated_message">请先在 DJI Mimo 中激活一次。很遗憾，这一步是必须的；激活后即可卸载 Mimo。</string>
 
@@ -198,8 +212,23 @@
     <string name="cd_play_pause">播放/暂停</string>
     <string name="cd_fast_forward">快进</string>
     <string name="cd_scrub_preview">拖动预览</string>
+    <string name="media_badge_favorite">已收藏</string>
+    <string name="media_badge_burst">连拍</string>
+    <string name="media_badge_panorama">全景</string>
+    <string name="media_badge_video">视频</string>
+    <string name="media_badge_photo">照片</string>
+    <string name="media_selected">已选择</string>
+    <string name="media_not_selected">未选择</string>
+    <string name="media_item_description">%1$s，%2$s，%3$s</string>
+    <string name="close_preview">关闭预览</string>
+    <string name="trim_in">入点</string>
+    <string name="trim_out">出点</string>
+    <string name="trim_in_value">入点 %1$s</string>
+    <string name="trim_out_value">出点 %1$s</string>
 
     <!-- Status pill -->
+    <string name="battery_percent">%1$d%%</string>
+    <string name="battery_charging_status">充电中 · %1$d%%</string>
     <string name="sd_card">SD 卡</string>
     <string name="internal_storage">内置存储</string>
     <string name="storage">存储空间</string>

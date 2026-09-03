@@ -1,6 +1,8 @@
 package dev.konraditurbe.osmosis.plugins
 
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -19,6 +21,7 @@ import androidx.core.view.WindowInsetsCompat
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.google.android.material.color.MaterialColors
 import dev.konraditurbe.osmosis.R
 import dev.konraditurbe.osmosis.plugin.PluginContract
 import dev.konraditurbe.osmosis.modules.DeviceModels
@@ -71,17 +74,19 @@ class PluginManagerActivity : AppCompatActivity() {
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
+            setBackgroundColor(themeColor(com.google.android.material.R.attr.colorSurface, Color.WHITE))
         }
         val toolbar = MaterialToolbar(this).apply {
             title = getString(R.string.modules_title)
-            setNavigationIcon(com.google.android.material.R.drawable.abc_ic_ab_back_material)
+            subtitle = getString(R.string.modules_subtitle)
+            setNavigationIcon(dev.konraditurbe.osmosis.feature.media.R.drawable.ic_arrow_back)
             setNavigationOnClickListener { finish() }
         }
-        root.addView(toolbar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(64)))
-        val scroll = ScrollView(this)
+        root.addView(toolbar, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(72)))
+        val scroll = ScrollView(this).apply { isFillViewport = true }
         list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(8), dp(16), dp(28))
+            setPadding(dp(20), dp(12), dp(20), dp(32))
         }
         scroll.addView(list, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         root.addView(scroll, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
@@ -102,7 +107,9 @@ class PluginManagerActivity : AppCompatActivity() {
     private fun render() {
         list.removeAllViews()
         list.addView(text(getString(R.string.modules_intro), 14f).apply {
-            setPadding(0, 0, 0, dp(14))
+            setTextColor(themeColor(com.google.android.material.R.attr.colorOnSurfaceVariant, Color.DKGRAY))
+            setLineSpacing(0f, 1.12f)
+            setPadding(0, 0, 0, dp(18))
         })
         section(R.string.module_core_section)
         ModuleRegistry.catalog().modules
@@ -116,9 +123,9 @@ class PluginManagerActivity : AppCompatActivity() {
     }
 
     private fun section(title: Int) {
-        list.addView(text(getString(title), 14f).apply {
+        list.addView(text(getString(title), 16f).apply {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
-            setPadding(dp(2), dp(8), 0, dp(6))
+            setPadding(dp(2), dp(10), 0, dp(10))
         })
     }
 
@@ -130,9 +137,7 @@ class PluginManagerActivity : AppCompatActivity() {
         }
         val installed = module.delivery == ModuleDelivery.CORE || ModuleSettings.isEnabled(this, module.id)
         val card = MaterialCardView(this).apply {
-            radius = dp(18).toFloat()
-            cardElevation = dp(1).toFloat()
-            useCompatPadding = true
+            styleModuleCard()
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -158,11 +163,12 @@ class PluginManagerActivity : AppCompatActivity() {
         if (module.delivery != ModuleDelivery.CORE) {
             content.addView(MaterialButton(this).apply {
                 text = getString(if (installed) R.string.module_remove else R.string.module_install)
+                styleAction(emphasized = !installed, destructive = installed)
                 setOnClickListener {
                     ModuleSettings.setEnabled(this@PluginManagerActivity, module.id, !installed)
                     render()
                 }
-            })
+            }, actionLayoutParams())
         }
         card.addView(content)
         addCard(card)
@@ -173,9 +179,7 @@ class PluginManagerActivity : AppCompatActivity() {
         val descriptor = record?.descriptor
         val packageInstalled = isPackageInstalled(known.packageName)
         val card = MaterialCardView(this).apply {
-            radius = dp(18).toFloat()
-            cardElevation = dp(1).toFloat()
-            useCompatPadding = true
+            styleModuleCard()
         }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -258,6 +262,12 @@ class PluginManagerActivity : AppCompatActivity() {
                 }
             })
         }
+        for (i in 0 until actions.childCount) {
+            val button = actions.getChildAt(i) as? MaterialButton ?: continue
+            val destructive = button.text == getString(R.string.module_remove)
+            button.styleAction(emphasized = i == 0 && !destructive, destructive = destructive)
+            button.layoutParams = actionLayoutParams()
+        }
         content.addView(actions)
         card.addView(content)
         addCard(card)
@@ -268,6 +278,45 @@ class PluginManagerActivity : AppCompatActivity() {
             bottomMargin = dp(12)
         })
     }
+
+    private fun MaterialCardView.styleModuleCard() {
+        radius = dp(20).toFloat()
+        cardElevation = 0f
+        useCompatPadding = false
+        setCardBackgroundColor(themeColor(com.google.android.material.R.attr.colorSurfaceContainerLow, Color.WHITE))
+        strokeColor = themeColor(com.google.android.material.R.attr.colorOutlineVariant, Color.LTGRAY)
+        strokeWidth = dp(1)
+    }
+
+    private fun MaterialButton.styleAction(emphasized: Boolean, destructive: Boolean = false) {
+        insetTop = 0
+        insetBottom = 0
+        cornerRadius = dp(14)
+        isAllCaps = false
+        val fillAttr = when {
+            destructive -> com.google.android.material.R.attr.colorErrorContainer
+            emphasized -> com.google.android.material.R.attr.colorPrimary
+            else -> com.google.android.material.R.attr.colorSurfaceContainerHigh
+        }
+        val textAttr = when {
+            destructive -> com.google.android.material.R.attr.colorOnErrorContainer
+            emphasized -> com.google.android.material.R.attr.colorOnPrimary
+            else -> com.google.android.material.R.attr.colorOnSurface
+        }
+        backgroundTintList = ColorStateList.valueOf(themeColor(fillAttr, Color.LTGRAY))
+        setTextColor(themeColor(textAttr, Color.DKGRAY))
+        strokeWidth = if (emphasized || destructive) 0 else dp(1)
+        strokeColor = ColorStateList.valueOf(
+            themeColor(com.google.android.material.R.attr.colorOutlineVariant, Color.GRAY),
+        )
+    }
+
+    private fun actionLayoutParams() = LinearLayout.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        dp(48),
+    ).apply { topMargin = dp(8) }
+
+    private fun themeColor(attr: Int, fallback: Int): Int = MaterialColors.getColor(this, attr, fallback)
 
     private fun applicability(models: Set<String>): String {
         val label = if (models.isEmpty()) {

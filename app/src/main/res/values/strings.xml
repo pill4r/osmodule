@@ -1,5 +1,6 @@
 <resources>
     <string name="modules_title">Module management</string>
+    <string name="modules_subtitle">Extend your camera workspace</string>
     <string name="modules_intro">Install or remove optional modules here. Pairing, preview and download are part of the main app and cannot be removed; external modules are verified before launch.</string>
     <string name="module_core_section">Main app</string>
     <string name="module_optional_section">Optional modules</string>

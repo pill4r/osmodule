@@ -81,11 +81,11 @@
 
     <!-- GPS sync -->
     <string name="the_camera">la cámara</string>
-    <string name="gps_sync_active_banner">🛰️ Sincronización GPS activa con %1$s\nLa exploración de contenido está desactivada mientras el GPS transmite. Haz click en 🛰️ para detener.</string>
-    <string name="gps_sync_connecting_banner">🛰️ Conectando la sincronización GPS con %1$s… aprueba en la cámara si lo pide. Haz click en 🛰️ para cancelar.</string>
+    <string name="gps_sync_active_banner">Sincronización GPS activa con %1$s\nLa exploración de contenido está en pausa. Usa el botón GPS para detenerla.</string>
+    <string name="gps_sync_connecting_banner">Conectando la sincronización GPS con %1$s… aprueba en la cámara si lo pide. Usa el botón GPS para cancelar.</string>
     <string name="gps_sync_starting">Iniciando la sincronización GPS con %1$s: aprueba en la cámara si lo pide</string>
-    <string name="gps_active_select_blocked">La sincronización GPS está activa: haz click en 🛰️ para detenerla antes de seleccionar una cámara.</string>
-    <string name="gps_stop_before_browse">Detén la sincronización GPS (haz click en 🛰️) antes de explorar el contenido.</string>
+    <string name="gps_active_select_blocked">La sincronización GPS está activa: usa el botón GPS para detenerla antes de seleccionar una cámara.</string>
+    <string name="gps_stop_before_browse">Detén la sincronización GPS antes de explorar el contenido.</string>
     <string name="camera_session_busy">Otro módulo de cámara está usando la conexión. Deténlo antes de explorar el contenido.</string>
     <string name="external_module_camera_busy">%1$s está usando %2$s. Detén ese módulo antes de explorar el contenido.</string>
     <string name="external_module_check_failed">No se pudo verificar el uso de la cámara por parte del complemento: %1$s</string>
@@ -208,4 +208,34 @@
     <string name="power_drawing">consumiendo %1$d mA</string>
     <string name="power_idle">inactivo</string>
     <string name="power_docked_suffix"> · acoplado</string>
+    <!-- Navegación moderna y accesibilidad -->
+    <string name="cameras_subtitle">Conecta, explora y transfiere</string>
+    <string name="gps_sync">Sincronización GPS</string>
+    <string name="camera_ready">Lista</string>
+    <string name="camera_offline">Sin conexión</string>
+    <string name="camera_row_description">%1$s, %2$s, %3$s</string>
+    <string name="camera_beta_name">%1$s · Beta</string>
+    <string name="media_library">Contenido</string>
+    <string name="gallery_subtitle">Biblioteca de la cámara</string>
+    <string name="select_all">Seleccionar todo</string>
+    <string name="clear_selection">Borrar selección</string>
+    <string name="done">Listo</string>
+    <string name="selected_count">%1$d seleccionados</string>
+    <string name="empty_gallery_title">Aún no hay contenido</string>
+    <string name="empty_gallery_message">Prueba otro filtro o captura algo y vuelve a conectar la cámara para actualizar la biblioteca.</string>
+    <string name="media_badge_favorite">favorito</string>
+    <string name="media_badge_burst">ráfaga</string>
+    <string name="media_badge_panorama">panorámica</string>
+    <string name="media_badge_video">vídeo</string>
+    <string name="media_badge_photo">foto</string>
+    <string name="media_selected">seleccionado</string>
+    <string name="media_not_selected">no seleccionado</string>
+    <string name="media_item_description">%1$s, %2$s, %3$s</string>
+    <string name="close_preview">Cerrar vista previa</string>
+    <string name="trim_in">Entrada</string>
+    <string name="trim_out">Salida</string>
+    <string name="trim_in_value">Entrada %1$s</string>
+    <string name="trim_out_value">Salida %1$s</string>
+    <string name="battery_percent">%1$d%%</string>
+    <string name="battery_charging_status">En carga · %1$d%%</string>
 </resources>

@@ -199,13 +199,19 @@ class RsdkController(context: Context, private val listener: Listener) : GattCli
         }
         pendingCommand = attempt
         main.removeCallbacks(commandTimeout)
-        main.postDelayed(commandTimeout, COMMAND_TIMEOUT_MS)
+        main.postDelayed(
+            commandTimeout,
+            if (attempt.command == RsdkCommand.SWITCH_MODE) MODE_SWITCH_COMMAND_TIMEOUT_MS
+            else COMMAND_TIMEOUT_MS,
+        )
     }
 
     private fun onCommandTimeout() {
         val command = pendingCommand ?: return
         pendingCommand = null
-        if (command.attempts < COMMAND_MAX_ATTEMPTS) {
+        // A mode switch can legitimately keep the camera busy for about three seconds. Re-sending
+        // it halfway through that transition restarts/invalidates the transition on some bodies.
+        if (command.command != RsdkCommand.SWITCH_MODE && command.attempts < COMMAND_MAX_ATTEMPTS) {
             listener.onLog("R-SDK: no ACK for ${command.command}; retrying (${command.attempts + 1}/$COMMAND_MAX_ATTEMPTS)")
             transmit(command)
         } else finishCommand(command, RsdkCommandOutcome.TIMED_OUT, detail = "No camera response")
@@ -458,6 +464,7 @@ class RsdkController(context: Context, private val listener: Listener) : GattCli
         /** Quiet for longer than this and the subscription is treated as not running. */
         const val STATUS_STALE_MS = 2000L
         const val COMMAND_TIMEOUT_MS = 1500L
+        const val MODE_SWITCH_COMMAND_TIMEOUT_MS = 5_000L
         const val COMMAND_WRITE_RETRY_MS = 120L
         const val COMMAND_SPACING_MS = 80L
         const val COMMAND_MAX_ATTEMPTS = 2

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="RsdkMiniEdgeButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:text" />
+        <item name="backgroundTint">#B8141922</item>
+        <item name="cornerRadius">14dp</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">0dp</item>
+        <item name="iconSize">20dp</item>
+        <item name="iconTint">@color/rsdk_text_primary</item>
+        <item name="strokeColor">#66303947</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="RsdkEdgeButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">56dp</item>
+        <item name="android:layout_height">56dp</item>
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">15dp</item>
+        <item name="android:text" />
+        <item name="backgroundTint">#B8141922</item>
+        <item name="cornerRadius">18dp</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">0dp</item>
+        <item name="iconSize">24dp</item>
+        <item name="iconTint">@color/rsdk_text_primary</item>
+        <item name="strokeColor">#80303947</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="RsdkShutterButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">76dp</item>
+        <item name="android:layout_height">76dp</item>
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:padding">20dp</item>
+        <item name="android:text" />
+        <item name="backgroundTint">@color/rsdk_record</item>
+        <item name="cornerRadius">38dp</item>
+        <item name="iconGravity">textStart</item>
+        <item name="iconPadding">0dp</item>
+        <item name="iconSize">30dp</item>
+        <item name="iconTint">@color/rsdk_text_primary</item>
+        <item name="strokeColor">#CCFFFFFF</item>
+        <item name="strokeWidth">2dp</item>
+    </style>
+
+    <style name="RsdkEdgeLabel">
+        <item name="android:layout_width">76dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:gravity">center</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:shadowColor">#B3000000</item>
+        <item name="android:shadowRadius">3</item>
+        <item name="android:textColor">@color/rsdk_text_primary</item>
+        <item name="android:textSize">10sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="RsdkSheetSectionLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textColor">@color/rsdk_text_primary</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="RsdkSheetButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_height">48dp</item>
+        <item name="android:insetLeft">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetRight">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textColor">@color/rsdk_text_primary</item>
+        <item name="android:textSize">12sp</item>
+        <item name="backgroundTint">@color/rsdk_panel_raised</item>
+        <item name="cornerRadius">15dp</item>
+        <item name="strokeColor">@color/rsdk_outline</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="RsdkModeCategoryButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_height">56dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textColor">@color/rsdk_mode_choice_text</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="backgroundTint">@color/rsdk_mode_choice_bg</item>
+        <item name="strokeColor">@color/rsdk_mode_choice_stroke</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="RsdkModeChoiceRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">10dp</item>
+        <item name="android:orientation">horizontal</item>
+    </style>
+
+    <style name="RsdkModeChoiceButton" parent="Widget.Material3.Button.OutlinedButton">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">82dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:checkable">true</item>
+        <item name="android:gravity">center</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:minHeight">82dp</item>
+        <item name="android:textColor">@color/rsdk_mode_choice_text</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="backgroundTint">@color/rsdk_mode_choice_bg</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="strokeColor">@color/rsdk_mode_choice_stroke</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="RsdkModeChoiceButton.Start">
+        <item name="android:layout_marginEnd">5dp</item>
+    </style>
+
+    <style name="RsdkModeChoiceButton.End">
+        <item name="android:layout_marginStart">5dp</item>
+    </style>
+</resources>

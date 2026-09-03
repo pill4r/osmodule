@@ -45,11 +45,11 @@ class StatusPillView @JvmOverloads constructor(
     init {
         orientation = VERTICAL
         background = context.getDrawable(R.drawable.pill_bg)
-        setPadding(dp(20), dp(16), dp(20), dp(16))
-        elevation = dp(6).toFloat()
+        setPadding(dp(16), dp(14), dp(16), dp(14))
+        elevation = 0f
 
-        nameView = mkText(17f, true, ink).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END }
-        batteryText = mkText(15f, true, ink)
+        nameView = mkText(16f, true, ink).apply { maxLines = 1; ellipsize = TextUtils.TruncateAt.END }
+        batteryText = mkText(13f, true, ink)
         addView(LinearLayout(context).apply {
             orientation = HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -61,10 +61,10 @@ class StatusPillView @JvmOverloads constructor(
             max = 100
             progressDrawable = context.getDrawable(R.drawable.battery_progress)
         }
-        addView(batteryBar, LayoutParams(LayoutParams.MATCH_PARENT, dp(8)).apply { topMargin = dp(12) })
+        addView(batteryBar, LayoutParams(LayoutParams.MATCH_PARENT, dp(5)).apply { topMargin = dp(10) })
 
         rows = LinearLayout(context).apply { orientation = VERTICAL }
-        addView(rows, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(12) })
+        addView(rows, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
     }
 
     /**
@@ -79,8 +79,8 @@ class StatusPillView @JvmOverloads constructor(
         // while docked, and two glyphs side by side just crowd the header.
         batteryText.text = when {
             pct !in 0..100 -> "—"
-            s.charging -> "⚡ $pct%"
-            else -> "🔋 $pct%"
+            s.charging -> context.getString(R.string.battery_charging_status, pct)
+            else -> context.getString(R.string.battery_percent, pct)
         }
         batteryBar.progress = pct.coerceIn(0, 100)
         batteryBar.progressTintList = ColorStateList.valueOf(
@@ -149,7 +149,7 @@ class StatusPillView @JvmOverloads constructor(
             gravity = Gravity.CENTER_VERTICAL
             addView(dot, LayoutParams(dp(6), dp(6)).apply { rightMargin = dp(8) })
             addView(mkText(12f, false, muted).apply { text = label })
-        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(7) })
+        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).apply { topMargin = dp(5) })
     }
 
     private fun mkText(sizeSp: Float, bold: Boolean, color: Int) = TextView(context).apply {

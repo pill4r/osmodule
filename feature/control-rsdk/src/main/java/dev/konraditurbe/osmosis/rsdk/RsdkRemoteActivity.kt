@@ -1,6 +1,5 @@
 package dev.konraditurbe.osmosis.rsdk
 
-import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -11,10 +10,9 @@ import android.os.Handler
 import android.os.Looper
 import android.view.Surface
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.ImageView
-import android.widget.Spinner
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -23,6 +21,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.core.view.updatePadding
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.CircularProgressIndicator
@@ -55,18 +55,21 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
     private lateinit var statusSecondary: TextView
     private lateinit var versionText: TextView
     private lateinit var commandResult: TextView
-    private lateinit var modeSpinner: Spinner
     private lateinit var connectButton: MaterialButton
     private lateinit var wakeButton: MaterialButton
-    private lateinit var captureButton: MaterialButton
-    private lateinit var recordButton: MaterialButton
+    private lateinit var shutterButton: MaterialButton
     private lateinit var snapshotButton: MaterialButton
     private lateinit var quickSwitchButton: MaterialButton
-    private lateinit var applyModeButton: MaterialButton
+    private lateinit var openModePickerButton: MaterialButton
     private lateinit var queryVersionButton: MaterialButton
     private lateinit var sleepButton: MaterialButton
     private lateinit var restartButton: MaterialButton
     private lateinit var gpsButton: MaterialButton
+    private lateinit var gpsLabel: TextView
+    private lateinit var modeLabel: TextView
+    private lateinit var currentModeText: TextView
+    private lateinit var shutterLabel: TextView
+    private lateinit var controlSheet: View
     private lateinit var previewSurface: PanoramaSurfaceView
     private lateinit var previewEmptyState: View
     private lateinit var previewIcon: ImageView
@@ -89,10 +92,12 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
     private val permissionQueue = ArrayDeque<PendingPermissionRequest>()
     private var activePermissionRequest: PendingPermissionRequest? = null
     private var versionRequested = false
-    private var modeInitialized = false
-    private var modeSelectionDirty = false
-    private var lastRenderedMode: CameraRemoteMode? = null
+    private var requestedMode: CameraRemoteMode? = null
     private var lastPhase = CameraRemotePhase.DISCONNECTED
+    private val clearRequestedMode = Runnable {
+        requestedMode = null
+        render(controller.state)
+    }
     private val gpsListener = CameraExclusiveController.Listener { state ->
         main.post { if (!isFinishing && !isDestroyed) renderGps(state) }
     }
@@ -109,6 +114,13 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
             showResult(getString(R.string.rsdk_permission_denied))
         }
         drainPermissionQueue()
+    }
+
+    private val modePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+        RsdkModePickerActivity.selectedMode(result.data)?.let(::requestModeSwitch)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -132,22 +144,18 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         @Suppress("DEPRECATION")
         fun colorSystemBars() {
             window.statusBarColor = Color.TRANSPARENT
-            window.navigationBarColor = ContextCompat.getColor(this, R.color.rsdk_console_background)
+            window.navigationBarColor = Color.TRANSPARENT
         }
         colorSystemBars()
-        WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
         setContentView(R.layout.activity_rsdk_remote)
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.rsdkRemoteRoot)) { view, insets ->
-            val bars = insets.getInsets(
-                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
-            )
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            insets
-        }
         bindViews()
+        applyFullscreenInsets()
+        enterImmersive()
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (controlSheet.visibility == View.VISIBLE) hideControls() else finish()
+            }
+        })
         livePreview = RsdkLivePreviewController(
             context = this,
             ssid = intent.getStringExtra(EXTRA_WIFI_SSID),
@@ -175,7 +183,6 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         }
     }
 
-    @SuppressLint("ClickableViewAccessibility") // Spinner handles performClick; this passive listener only marks user intent.
     private fun bindViews() {
         findViewById<MaterialToolbar>(R.id.rsdkToolbar).setNavigationOnClickListener { finish() }
         findViewById<TextView>(R.id.rsdkCameraIdentity).text = cameraName
@@ -186,18 +193,21 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         statusSecondary = findViewById(R.id.rsdkStatusSecondary)
         versionText = findViewById(R.id.rsdkVersion)
         commandResult = findViewById(R.id.rsdkCommandResult)
-        modeSpinner = findViewById(R.id.rsdkModeSpinner)
         connectButton = findViewById(R.id.rsdkConnect)
         wakeButton = findViewById(R.id.rsdkWake)
-        captureButton = findViewById(R.id.rsdkCapture)
-        recordButton = findViewById(R.id.rsdkRecord)
+        shutterButton = findViewById(R.id.rsdkShutter)
         snapshotButton = findViewById(R.id.rsdkSnapshot)
         quickSwitchButton = findViewById(R.id.rsdkQuickSwitch)
-        applyModeButton = findViewById(R.id.rsdkApplyMode)
+        openModePickerButton = findViewById(R.id.rsdkOpenModePicker)
         queryVersionButton = findViewById(R.id.rsdkQueryVersion)
         sleepButton = findViewById(R.id.rsdkSleep)
         restartButton = findViewById(R.id.rsdkRestart)
         gpsButton = findViewById(R.id.rsdkGps)
+        gpsLabel = findViewById(R.id.rsdkGpsLabel)
+        modeLabel = findViewById(R.id.rsdkModeLabel)
+        currentModeText = findViewById(R.id.rsdkCurrentMode)
+        shutterLabel = findViewById(R.id.rsdkShutterLabel)
+        controlSheet = findViewById(R.id.rsdkControlSheet)
         previewSurface = findViewById(R.id.rsdkPreviewSurface)
         previewEmptyState = findViewById(R.id.rsdkPreviewEmptyState)
         previewIcon = findViewById(R.id.rsdkPreviewIcon)
@@ -211,18 +221,12 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         previewAction = findViewById(R.id.rsdkPreviewAction)
         previewLiveAction = findViewById(R.id.rsdkPreviewLiveAction)
         previewRecenter = findViewById(R.id.rsdkPreviewRecenter)
-        gpsButton.visibility = if (gpsController == null) View.GONE else View.VISIBLE
+        previewSurface.setRollDegrees(PREVIEW_ROLL_DEGREES)
+        val gpsVisibility = if (gpsController == null) View.GONE else View.VISIBLE
+        gpsButton.visibility = gpsVisibility
+        gpsLabel.visibility = gpsVisibility
         gpsController?.state?.let(::renderGps)
 
-        modeSpinner.adapter = ArrayAdapter(
-            this,
-            R.layout.item_rsdk_mode,
-            CameraRemoteMode.entries.map { humanize(it.name) },
-        ).also { it.setDropDownViewResource(R.layout.item_rsdk_mode_dropdown) }
-        modeSpinner.setOnTouchListener { _, _ ->
-            modeSelectionDirty = true
-            false
-        }
     }
 
     private fun bindPreview() {
@@ -238,6 +242,8 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
     }
 
     private fun bindActions() {
+        findViewById<View>(R.id.rsdkMoreControls).setOnClickListener { showControls() }
+        findViewById<View>(R.id.rsdkCloseControls).setOnClickListener { hideControls() }
         connectButton.setOnClickListener {
             if (controller.state.phase == CameraRemotePhase.DISCONNECTED) requestConnect()
             else controller.disconnect()
@@ -247,19 +253,10 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
                 if (!controller.wake(this, cameraAddress)) showResult(getString(R.string.rsdk_command_not_accepted))
             }
         }
-        captureButton.setOnClickListener { submit(controller.capture()) }
-        recordButton.setOnClickListener {
-            submit(controller.setRecording(controller.state.status?.recording != true))
-        }
+        shutterButton.setOnClickListener { submit(controller.capture()) }
         snapshotButton.setOnClickListener { submit(controller.snapshot()) }
-        quickSwitchButton.setOnClickListener { submit(controller.quickSwitch()) }
-        applyModeButton.setOnClickListener {
-            CameraRemoteMode.entries.getOrNull(modeSpinner.selectedItemPosition)?.let {
-                val accepted = controller.switchMode(it)
-                if (accepted) modeSelectionDirty = false
-                submit(accepted)
-            }
-        }
+        quickSwitchButton.setOnClickListener { openModePicker() }
+        openModePickerButton.setOnClickListener { openModePicker() }
         queryVersionButton.setOnClickListener { submit(controller.queryVersion()) }
         sleepButton.setOnClickListener { submit(controller.sleep()) }
         restartButton.setOnClickListener {
@@ -296,6 +293,113 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         previewRecenter.setOnClickListener { previewSurface.recenter() }
     }
 
+    private fun openModePicker() {
+        modePickerLauncher.launch(
+            RsdkModePickerActivity.intent(this, RsdkModeCatalog.currentMode(controller.state)),
+        )
+    }
+
+    private fun requestModeSwitch(mode: CameraRemoteMode) {
+        hideControls()
+        if (RsdkModeCatalog.currentMode(controller.state) == mode) {
+            requestedMode = null
+            render(controller.state)
+            return
+        }
+        requestedMode = mode
+        main.removeCallbacks(clearRequestedMode)
+        val accepted = controller.switchMode(mode)
+        if (accepted) {
+            showResult(getString(R.string.rsdk_switching_to_mode, modeDisplayName(mode)))
+            main.postDelayed(clearRequestedMode, MODE_SWITCH_LABEL_TIMEOUT_MS)
+            render(controller.state)
+        } else {
+            requestedMode = null
+            submit(false)
+        }
+    }
+
+    private fun applyFullscreenInsets() {
+        val root = findViewById<View>(R.id.rsdkRemoteRoot)
+        val top = findViewById<View>(R.id.rsdkTopOverlay)
+        val bottom = findViewById<View>(R.id.rsdkBottomOverlay)
+        val topPadding = intArrayOf(top.paddingLeft, top.paddingTop, top.paddingRight, top.paddingBottom)
+        val bottomPadding = intArrayOf(
+            bottom.paddingLeft,
+            bottom.paddingTop,
+            bottom.paddingRight,
+            bottom.paddingBottom,
+        )
+        val sheetPadding = intArrayOf(
+            controlSheet.paddingLeft,
+            controlSheet.paddingTop,
+            controlSheet.paddingRight,
+            controlSheet.paddingBottom,
+        )
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val safe = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout(),
+            )
+            top.updatePadding(
+                left = topPadding[0] + safe.left,
+                top = topPadding[1] + safe.top,
+                right = topPadding[2] + safe.right,
+                bottom = topPadding[3],
+            )
+            bottom.updatePadding(
+                left = bottomPadding[0] + safe.left,
+                top = bottomPadding[1],
+                right = bottomPadding[2] + safe.right,
+                bottom = bottomPadding[3] + safe.bottom,
+            )
+            controlSheet.updatePadding(
+                left = sheetPadding[0] + safe.left,
+                top = sheetPadding[1],
+                right = sheetPadding[2] + safe.right,
+                bottom = sheetPadding[3] + safe.bottom,
+            )
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
+    }
+
+    private fun enterImmersive() {
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            hide(WindowInsetsCompat.Type.systemBars())
+        }
+    }
+
+    private fun showControls() {
+        if (controlSheet.visibility == View.VISIBLE) return
+        controlSheet.animate().cancel()
+        controlSheet.alpha = 0f
+        controlSheet.translationY = 64f
+        controlSheet.visibility = View.VISIBLE
+        controlSheet.animate()
+            .alpha(1f)
+            .translationY(0f)
+            .setDuration(CONTROL_SHEET_ANIMATION_MS)
+            .start()
+        findViewById<View>(R.id.rsdkCloseControls).requestFocus()
+    }
+
+    private fun hideControls() {
+        controlSheet.animate().cancel()
+        controlSheet.animate()
+            .alpha(0f)
+            .translationY(64f)
+            .setDuration(CONTROL_SHEET_ANIMATION_MS)
+            .withEndAction {
+                controlSheet.visibility = View.GONE
+                controlSheet.alpha = 1f
+                controlSheet.translationY = 0f
+            }
+            .start()
+    }
+
     private fun requestPreviewStart() {
         if (!activityStarted || !previewUserEnabled || previewOutputSurface == null) return
         if (!livePreview.canStart) {
@@ -312,9 +416,8 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
     private fun requestConnect() {
         withPermissions(controller.connectionPermissions(Build.VERSION.SDK_INT)) {
             versionRequested = false
-            modeInitialized = false
-            modeSelectionDirty = false
-            lastRenderedMode = null
+            requestedMode = null
+            main.removeCallbacks(clearRequestedMode)
             if (!controller.connect(this, cameraAddress, cameraName)) {
                 controller.state.lastError?.let(::showResult)
                     ?: showResult(getString(R.string.rsdk_command_not_accepted))
@@ -374,11 +477,18 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
 
     override fun onStop() {
         activityStarted = false
+        requestedMode = null
+        main.removeCallbacks(clearRequestedMode)
         if (::livePreview.isInitialized) livePreview.stop()
         if (::previewSurface.isInitialized) previewSurface.onPause()
         if (::controller.isInitialized) controller.removeListener(this)
         gpsController?.removeListener(gpsListener)
         super.onStop()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) enterImmersive()
     }
 
     override fun onDestroy() {
@@ -392,7 +502,14 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
     }
 
     override fun onStateChanged(state: CameraRemoteState) {
-        main.post { if (!isFinishing && !isDestroyed) render(state) }
+        main.post {
+            if (isFinishing || isDestroyed) return@post
+            if (requestedMode == RsdkModeCatalog.currentMode(state)) {
+                requestedMode = null
+                main.removeCallbacks(clearRequestedMode)
+            }
+            render(state)
+        }
     }
 
     override fun onCommandResult(result: CameraRemoteCommandResult) {
@@ -410,7 +527,20 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
                 result.detail?.takeIf { it.isNotBlank() }?.let(::add)
             }.joinToString(" · ")
             val detail = if (wireDetail.isBlank()) "" else getString(R.string.rsdk_result_detail, wireDetail)
-            showResult(getString(R.string.rsdk_result, humanize(result.command.name), outcome, detail))
+            val commandName = if (result.command == CameraRemoteCommand.CAPTURE) {
+                getString(R.string.rsdk_shutter)
+            } else {
+                humanize(result.command.name)
+            }
+            showResult(getString(R.string.rsdk_result, commandName, outcome, detail))
+
+            if (result.command == CameraRemoteCommand.SWITCH_MODE) {
+                if (result.outcome != CameraRemoteCommandOutcome.SUCCEEDED) {
+                    requestedMode = null
+                    main.removeCallbacks(clearRequestedMode)
+                    render(controller.state)
+                }
+            }
 
             if (result.command == CameraRemoteCommand.WAKE &&
                 result.outcome == CameraRemoteCommandOutcome.SUCCEEDED
@@ -424,6 +554,10 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
 
     private fun render(state: CameraRemoteState) {
         val panel = RsdkRemotePanelStateMapper.from(state)
+        if (requestedMode == RsdkModeCatalog.currentMode(state)) {
+            requestedMode = null
+            main.removeCallbacks(clearRequestedMode)
+        }
         val phaseText = when (state.phase) {
             CameraRemotePhase.DISCONNECTED -> getString(R.string.rsdk_state_disconnected)
             CameraRemotePhase.CONNECTING -> getString(R.string.rsdk_state_connecting)
@@ -440,18 +574,15 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         connectButton.text = getString(if (panel.canDisconnect) R.string.rsdk_disconnect else R.string.rsdk_connect)
         connectButton.isEnabled = panel.canConnect || panel.canDisconnect
         wakeButton.isEnabled = panel.canWake
+        val commandsEnabled = panel.commandsEnabled
         listOf(
-            captureButton, recordButton, snapshotButton, quickSwitchButton, applyModeButton,
+            shutterButton, snapshotButton, quickSwitchButton, openModePickerButton,
             queryVersionButton, sleepButton, restartButton,
-        ).forEach { it.isEnabled = panel.commandsEnabled }
-        modeSpinner.isEnabled = panel.commandsEnabled
-        recordButton.text = getString(if (panel.recording) R.string.rsdk_record_stop else R.string.rsdk_record_start)
-        recordButton.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(
-            this,
-            if (panel.recording) R.color.rsdk_record_dark else R.color.rsdk_record,
-        ))
+        ).forEach { it.isEnabled = commandsEnabled }
+        renderShutter(state, panel.recording)
 
         renderStatus(state.status, state.modeLabel)
+        renderModeState(state)
         renderVersion(state)
         state.lastError?.takeIf { it.isNotBlank() }?.let(::showResult)
 
@@ -462,11 +593,58 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         lastPhase = state.phase
     }
 
+    private fun renderShutter(state: CameraRemoteState, recording: Boolean) {
+        val currentMode = RsdkModeCatalog.currentMode(state)
+        val photoMode = RsdkModeCatalog.isPhoto(currentMode)
+        val label = getString(when {
+            recording -> R.string.rsdk_record_stop
+            currentMode == null -> R.string.rsdk_shutter
+            photoMode -> R.string.rsdk_capture
+            else -> R.string.rsdk_record_start
+        })
+        shutterButton.text = ""
+        shutterButton.contentDescription = label
+        shutterButton.icon = ContextCompat.getDrawable(
+            this,
+            when {
+                recording -> R.drawable.ic_rsdk_stop
+                photoMode -> R.drawable.ic_rsdk_capture
+                else -> R.drawable.ic_rsdk_record
+            },
+        )
+        shutterLabel.text = label
+        shutterButton.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(
+            this,
+            when {
+                recording -> R.color.rsdk_record_dark
+                photoMode -> R.color.rsdk_accent_dark
+                else -> R.color.rsdk_record
+            },
+        ))
+    }
+
     private fun renderGps(state: CameraExclusiveState) {
-        gpsButton.text = getString(
+        val label = getString(
             if (state.locked) R.string.rsdk_gps_short_active else R.string.rsdk_gps_short,
         )
+        gpsButton.text = ""
+        gpsButton.contentDescription = getString(
+            if (state.locked) R.string.rsdk_gps_stop else R.string.rsdk_gps_start,
+        )
+        gpsLabel.text = label
         gpsButton.isChecked = state.locked
+        gpsButton.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(
+            this,
+            if (state.locked) R.color.rsdk_accent_dark else R.color.rsdk_panel,
+        ))
+        gpsButton.strokeColor = ColorStateList.valueOf(ContextCompat.getColor(
+            this,
+            if (state.locked) R.color.rsdk_accent else R.color.rsdk_outline,
+        ))
+        gpsLabel.setTextColor(ContextCompat.getColor(
+            this,
+            if (state.locked) R.color.rsdk_accent else R.color.rsdk_text_primary,
+        ))
     }
 
     private fun renderPreview(state: RsdkPreviewState) {
@@ -508,7 +686,8 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
             status.activeCapture -> getString(R.string.rsdk_capture_active)
             else -> getString(R.string.rsdk_capture_idle)
         }
-        statusPrimary.text = getString(R.string.rsdk_status_primary, status.modeLabel, capture)
+        val localizedMode = status.mode?.let(::modeDisplayName) ?: status.modeLabel
+        statusPrimary.text = getString(R.string.rsdk_status_primary, localizedMode, capture)
         previewBattery.text = status.batteryPercent?.let { "$it%" } ?: unknown()
         previewBattery.visibility = View.VISIBLE
         previewRecordBadge.visibility = if (status.recording) View.VISIBLE else View.GONE
@@ -524,12 +703,6 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
                 status.remainingRecordSeconds?.let(::duration) ?: unknown(),
             ))
         }.joinToString("\n")
-        val actualMode = status.mode
-        if (actualMode != null && (!modeInitialized || (!modeSelectionDirty && actualMode != lastRenderedMode))) {
-            modeSpinner.setSelection(actualMode.ordinal)
-            modeInitialized = true
-        }
-        lastRenderedMode = actualMode
     }
 
     private fun renderVersion(state: CameraRemoteState) {
@@ -549,7 +722,28 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
 
     private fun showResult(text: String) {
         commandResult.text = text
+        commandResult.visibility = View.VISIBLE
     }
+
+    private fun renderModeState(state: CameraRemoteState) {
+        val reportedMode = RsdkModeCatalog.currentMode(state)?.let(::modeDisplayName)
+            ?: state.status?.modeLabel?.takeIf(String::isNotBlank)
+            ?: state.modeLabel?.takeIf(String::isNotBlank)
+        val current = reportedMode ?: unknown()
+        val target = requestedMode
+        modeLabel.text = target?.let(::modeDisplayName)
+            ?: reportedMode
+            ?: getString(R.string.rsdk_mode_short)
+        currentModeText.text = if (target == null) {
+            getString(R.string.rsdk_current_mode, current)
+        } else {
+            getString(R.string.rsdk_switching_to_mode, modeDisplayName(target))
+        }
+        quickSwitchButton.contentDescription = getString(R.string.rsdk_mode_open_picker, current)
+    }
+
+    private fun modeDisplayName(mode: CameraRemoteMode): String =
+        getString(RsdkModeCatalog.labelRes(mode))
 
     private fun unknown() = getString(R.string.rsdk_unknown)
 
@@ -575,6 +769,9 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         const val EXTRA_PANORAMA_CALIBRATION_DATA = "panorama_calibration_data"
         private const val DEFAULT_DATALINK_PORT = 9004
         private const val WAKE_SETTLE_MS = 2_300L
+        private const val CONTROL_SHEET_ANIMATION_MS = 220L
+        private const val MODE_SWITCH_LABEL_TIMEOUT_MS = 8_000L
+        private const val PREVIEW_ROLL_DEGREES = 90f
         private val MAC = Regex("^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
     }
 }

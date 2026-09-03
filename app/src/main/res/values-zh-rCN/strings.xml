@@ -1,5 +1,6 @@
 <resources>
     <string name="modules_title">模块管理</string>
+    <string name="modules_subtitle">扩展你的相机工作区</string>
     <string name="modules_intro">在这里安装或删除可选模块。配对、预览和下载属于主应用核心功能，无法删除；外部模块会在启动前完成安全校验。</string>
     <string name="module_core_section">主应用</string>
     <string name="module_optional_section">可选模块</string>

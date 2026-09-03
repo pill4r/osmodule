@@ -52,7 +52,10 @@ class PanoramaSurfaceView @JvmOverloads constructor(
                 MotionEvent.ACTION_DOWN -> { lastX = event.x; lastY = event.y }
                 MotionEvent.ACTION_MOVE -> {
                     val density = resources.displayMetrics.density
-                    sphere.rotate((event.x - lastX) / density * 0.18f, (event.y - lastY) / density * 0.18f)
+                    sphere.rotateFromScreen(
+                        (event.x - lastX) / density * 0.18f,
+                        (event.y - lastY) / density * 0.18f,
+                    )
                     lastX = event.x
                     lastY = event.y
                     requestRender()
@@ -64,6 +67,12 @@ class PanoramaSurfaceView @JvmOverloads constructor(
 
     fun recenter() {
         sphere.recenter()
+        requestRender()
+    }
+
+    /** Rotates the rendered panorama in screen space; positive values are counter-clockwise. */
+    fun setRollDegrees(degrees: Float) {
+        sphere.setRollDegrees(degrees)
         requestRender()
     }
 
@@ -96,6 +105,7 @@ private class SphereRenderer(
     @Volatile private var yaw = 0f
     @Volatile private var pitch = 0f
     @Volatile private var fov = 75f
+    @Volatile private var rollDegrees = 0f
     private var aspect = 1f
     var onVideoSurface: ((SurfaceTexture) -> Unit)? = null
         set(value) {
@@ -141,6 +151,7 @@ private class SphereRenderer(
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         Matrix.perspectiveM(projection, 0, fov, aspect, 0.1f, 20f)
         Matrix.setLookAtM(view, 0, 0f, 0f, 0f, 0f, 0f, -1f, 0f, 1f, 0f)
+        Matrix.rotateM(view, 0, rollDegrees, 0f, 0f, 1f)
         Matrix.setIdentityM(model, 0)
         Matrix.rotateM(model, 0, -pitch, 1f, 0f, 0f)
         Matrix.rotateM(model, 0, -yaw, 0f, 1f, 0f)
@@ -169,8 +180,23 @@ private class SphereRenderer(
         pitch = (pitch + dy).coerceIn(-85f, 85f)
     }
 
+    /** Keeps drag directions screen-relative after applying a viewfinder roll. */
+    fun rotateFromScreen(dx: Float, dy: Float) {
+        val radians = rollDegrees / 180f * PI.toFloat()
+        val cosine = cos(radians)
+        val sine = sin(radians)
+        rotate(
+            dx = dx * cosine - dy * sine,
+            dy = dx * sine + dy * cosine,
+        )
+    }
+
     fun zoom(scale: Float) {
         fov = (fov / scale).coerceIn(42f, 100f)
+    }
+
+    fun setRollDegrees(degrees: Float) {
+        rollDegrees = degrees % 360f
     }
 
     fun recenter() { yaw = 0f; pitch = 0f; fov = 75f }

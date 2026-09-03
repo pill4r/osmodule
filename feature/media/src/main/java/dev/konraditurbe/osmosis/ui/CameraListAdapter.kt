@@ -5,7 +5,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
 import dev.konraditurbe.osmosis.feature.media.R
 import dev.konraditurbe.osmosis.ble.CameraModel
@@ -36,16 +38,31 @@ class CameraListAdapter(
         val v = convertView ?: LayoutInflater.from(parent.context)
             .inflate(R.layout.item_camera, parent, false)
         val r = rows[position]
-        v.findViewById<TextView>(R.id.camType).text =
-            r.model.name + if (!r.model.verified) "  🧪" else ""
+        v.findViewById<TextView>(R.id.camType).text = if (r.model.verified) r.model.name
+            else v.context.getString(R.string.camera_beta_name, r.model.name)
         v.findViewById<TextView>(R.id.camName).text = r.name ?: r.mac
-        v.findViewById<TextView>(R.id.camStatus).text = if (r.inRange) "📶" else "🚫"
+        val statusLabel = v.findViewById<TextView>(R.id.camStatus)
+        statusLabel.text = v.context.getString(if (r.inRange) R.string.camera_ready else R.string.camera_offline)
+        statusLabel.setTextColor(ContextCompat.getColor(
+            v.context,
+            if (r.inRange) R.color.osmo_green_dark else R.color.osmo_muted,
+        ))
+        v.findViewById<ImageView>(R.id.camSignal).setColorFilter(ContextCompat.getColor(
+            v.context,
+            if (r.inRange) R.color.osmo_green else R.color.osmo_muted,
+        ))
         v.findViewById<TextView>(R.id.camTag).visibility = if (r.saved) View.GONE else View.VISIBLE
         v.findViewById<MaterialButton>(R.id.camModules).apply {
             visibility = if (onModulesClick == null) View.GONE else View.VISIBLE
             setOnClickListener { onModulesClick?.invoke(r) }
         }
         v.alpha = if (r.inRange) 1f else 0.5f // dim saved cameras that aren't in range
+        v.contentDescription = v.context.getString(
+            R.string.camera_row_description,
+            r.model.name,
+            r.name ?: r.mac,
+            statusLabel.text,
+        )
         return v
     }
 }
