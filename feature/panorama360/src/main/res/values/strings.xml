@@ -1,0 +1,10 @@
+<resources>
+    <string name="panorama_title">360° viewer</string>
+    <string name="panorama_buffering">Buffering the lightweight preview…</string>
+    <string name="panorama_hint">Drag to look around · pinch to zoom</string>
+    <string name="panorama_play">Play</string>
+    <string name="panorama_pause">Pause</string>
+    <string name="panorama_recenter">Recenter</string>
+    <string name="panorama_unavailable">This 360° video could not be streamed.</string>
+    <string name="panorama_back">Back</string>
+</resources>

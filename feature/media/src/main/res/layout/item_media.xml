@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cell spacing is applied by the RecyclerView ItemDecoration, not a layout_margin here. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="140dp"
+    android:background="#22FFFFFF">
+
+    <ImageView
+        android:id="@+id/thumb"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:contentDescription="@string/cd_thumbnail" />
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="#99000000"
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="2dp"
+        android:singleLine="true"
+        android:textColor="#FFFFFF"
+        android:textSize="10sp" />
+
+    <!-- Media badge: ❤️ when favorited, else a type hint (📷 photo / 📹 video). Text set in the adapter.
+         Sized/centered to mirror the checkbox's ~40dp box on the opposite corner. -->
+    <TextView
+        android:id="@+id/star"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|start"
+        android:minWidth="40dp"
+        android:minHeight="40dp"
+        android:gravity="center"
+        android:text="❤️"
+        android:textSize="18sp" />
+
+    <CheckBox
+        android:id="@+id/check"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:clickable="false"
+        android:focusable="false" />
+</FrameLayout>

@@ -1,0 +1,31 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "osmodule"
+include ':app'
+include ':core:common'
+include ':core:module-api'
+include ':core:plugin-api'
+include ':core:camera-session'
+include ':core:panorama-renderer'
+include ':protocol:duml'
+include ':protocol:rsdk'
+include ':transport:ble'
+include ':camera:media'
+include ':feature:media'
+include ':feature:panorama360'
+include ':feature:control-rsdk'
+include ':plugins:rsdk'
+include ':plugins:panorama360'

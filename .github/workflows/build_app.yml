@@ -1,0 +1,121 @@
+name: Build & release APK
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      # JDK 21 to match F-Droid's buildserver. Reproducible builds compare their APK against the
+      # one this workflow attaches to the release, so the two toolchains have to agree — see
+      # AllowedAPKSigningKeys in metadata/dev.konraditurbe.osmosis.yml over in fdroiddata.
+      # Don't bump this without checking what F-Droid runs.
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Decode keystore
+        run: printf "%s" "${{ secrets.APP_KEYSTORE }}" | base64 --decode > app-keystore.jks
+
+      - name: Create keystore.properties
+        run: |
+          cat > keystore.properties <<EOF
+          storePassword=${{ secrets.STOREPASSWORD }}
+          keyPassword=${{ secrets.KEYPASSWORD }}
+          keyAlias=${{ secrets.KEYALIAS }}
+          storeFile=../app-keystore.jks
+          EOF
+
+      - name: Build and test Base + plugin APKs
+        run: >-
+          bash ./gradlew test lint
+          :app:assembleRelease :app:assembleDebug
+          :plugins:panorama360:assembleRelease :plugins:panorama360:assembleDebug
+          :plugins:rsdk:assembleRelease :plugins:rsdk:assembleDebug
+
+      - name: Upload Base release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-base-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+
+      - name: Upload Panorama 360 release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-panorama360-release-apk
+          path: plugins/panorama360/build/outputs/apk/release/panorama360-release.apk
+          if-no-files-found: error
+
+      - name: Upload R-SDK release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-rsdk-release-apk
+          path: plugins/rsdk/build/outputs/apk/release/rsdk-release.apk
+          if-no-files-found: error
+
+      - name: Upload release mappings
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-release-mappings
+          path: |
+            app/build/outputs/mapping/release/**
+            plugins/panorama360/build/outputs/mapping/release/**
+            plugins/rsdk/build/outputs/mapping/release/**
+          if-no-files-found: error
+
+      - name: Upload Base Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-base-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload Panorama 360 Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-panorama360-debug-apk
+          path: plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk
+          if-no-files-found: error
+
+      - name: Upload R-SDK Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-rsdk-debug-apk
+          path: plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk
+          if-no-files-found: error
+
+      # Release APK only. The debug build stays an Actions artifact (above) where it is useful
+      # for triage, and never becomes a release asset: it is signed with the debug key, so a tester
+      # who grabs it instead of the real one gets "App not installed" over their existing install.
+      # That happened on v1.3.1-rc1 and had to be cleaned up by hand.
+      - name: Publish GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: osmodule ${{ github.ref_name }}
+          draft: false
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            plugins/panorama360/build/outputs/apk/release/panorama360-release.apk
+            plugins/rsdk/build/outputs/apk/release/rsdk-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

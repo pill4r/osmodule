@@ -1,0 +1,83 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// Release signing — reads keystore.properties (created by CI from repo secrets). When it is absent
+// — a plain source checkout, or a downstream packager such as F-Droid that signs with its own key —
+// no signingConfig is attached at all and assembleRelease emits app-release-unsigned.apk. Attaching
+// an empty signingConfig instead fails packageRelease with "missing required property storeFile".
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+
+android {
+    namespace = 'dev.konraditurbe.osmosis'
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "dev.konraditurbe.osmosis"
+        minSdk = 29
+        targetSdk = 36
+        // Must exceed every code already in a tester's hands: 20 went out as
+        // 1.3.3-action1-playback, 22 as 1.3.1-rc1, 23 was tagged v1.3.1 but never published, 24 is
+        // the published v1.3.2, 25 the published v1.4.0, 26 the published v1.4.1, 27 the published
+        // v1.4.2 and 28 the published v1.4.3. Version 32 starts the fully external optional-plugin
+        // layout and enables release shrinking.
+        versionCode = 32
+        versionName = "1.5.0"
+        testInstrumentationRunner = "dev.konraditurbe.osmosis.plugins.PluginBindingInstrumentation"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropsFile.exists()) {
+                storeFile = file(keystoreProps['storeFile']) // property is relative to app/
+                storePassword = keystoreProps['storePassword']
+                keyAlias = keystoreProps['keyAlias']
+                keyPassword = keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (keystorePropsFile.exists()) {
+                signingConfig = signingConfigs.release
+            }
+            minifyEnabled = true
+            shrinkResources = true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // AGP otherwise stuffs a Google-signed blob of the dependency list into the APK signing block.
+    // It is opaque, it is not reproducible, and nothing here needs it. Requested by F-Droid review.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+}
+
+dependencies {
+    implementation project(':core:module-api')
+    implementation project(':core:plugin-api')
+    implementation project(':feature:media')
+
+    implementation 'androidx.activity:activity:1.9.3'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.core:core-ktx:1.9.0'
+    implementation 'com.google.android.material:material:1.10.0'
+
+    testImplementation 'junit:junit:4.13.2'
+}

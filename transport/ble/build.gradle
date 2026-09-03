@@ -1,0 +1,22 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace = 'dev.konraditurbe.osmosis.transport.ble'
+    compileSdk = 36
+
+    defaultConfig { minSdk = 29 }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions { jvmTarget = '21' }
+}
+
+dependencies {
+    api project(':protocol:duml')
+    testImplementation 'junit:junit:4.13.2'
+}

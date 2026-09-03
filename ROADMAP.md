@@ -1,0 +1,153 @@
+# osmodule — Roadmap
+
+[English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md)
+
+### Modular R-SDK control
+
+- [x] Process-wide camera session lease shared by media and R-SDK transports.
+- [x] One R-SDK connection hub shared by remote control and GPS sync.
+- [x] Public R-SDK version, key, mode, record, status, sleep, wake and restart protocol support.
+- [x] Serialized commands with sequence-matched acknowledgements, timeout and retry.
+- [x] Stable `CameraRemoteControl` management-plane contract; its implementation is absent from osmodule Base.
+- [x] Move R-SDK control and GPS into a separately installed, same-signature plugin APK.
+- [x] Add a versioned AIDL boundary, signed plugin discovery and plugin-owned private UI launch.
+- [x] Add the Base module manager with local APK verification and system Package Installer handoff.
+- [x] Declare per-module camera compatibility; remote control is restricted to Osmo 360.
+- [x] Prevent Base media startup while the R-SDK plugin reports an active cross-process camera lease.
+- [x] Add a low-latency local Wi-Fi viewfinder with H.264/H.265 hardware decode to the remote console.
+- [ ] Hardware-verify the viewfinder receiver and stream profile across Osmo 360 firmware versions.
+- [ ] Hardware-verify every command across Osmo 360 firmware versions and record firmware gates.
+- [ ] Add a signed module-repository index and download UI; current module installation selects a local APK.
+
+### 360° media
+
+- [x] Add an optional Osmo 360-only equirectangular video viewer with drag and pinch navigation.
+- [x] Keep pairing, flat preview and downloads in the core media app.
+- [x] Remove the competing scrub-frame decoder during Osmo 360 startup buffering.
+
+### 2. The rest of the Osmo line:
+
+- **Action 4**: WIP, most media operations appear to work.
+
+- [x] Camera is detected and can be connected to
+- [x] Grid loads
+- [x] Media downloads work
+- [ ] Delete a file
+- [ ] Pagination: scroll past 45 files
+- [ ] Favorite a file
+- [ ] Load previous favorites in the grid
+- [ ] Disconnection handling
+
+### 6. Older Osmo Action generation (index-based list)
+
+We want browse + download on the Action 1/2/3, which use an older list format keyed by numeric
+`FileIndex` with no path strings ([MEDIA_PROTOCOL §1](MEDIA_PROTOCOL.md#1-get-media-list), "Parsed —
+index-based"). The **list is shipped and hardware-verified** (`decodeIndexList`, fixture
+`action1_7.bin`) — the grid shows the clips. The **download is not**: our `/v1?file_index=` is a
+placeholder, and HTTP `:80` is refused while the datalink is up.
+
+**Branch: `support-osmo-action-1`.** Five commits on top of main: the index decoder ported onto the DCF
+seam with the record layout corrected, the 65-byte stride confirmed on a second camera, and
+`DcfTransferProbe` — which asks the camera outright whether it serves files over the datalink, and
+tests whether `:80` is gated on playback mode. That probe is the experiment that answers this item's
+core question; it has never been run against an Action.
+
+**Blockers:** none any more. Unblocked 2026-08-07 — a decompiled DJI-derived app's media layer turns out
+to be index-based as well, so the download path can be read off rather than guessed at. Two smaller
+fixes ride along: the AP keepalive does not hold an Action's AP (`onLost` ~40 s after the
+list), and the `/v2` storage detect should be skipped for index cameras (it fires two failing HEADs).
+
+### 11. Direct USB-C ↔ USB-C media read
+
+We want to offload over a cable, skipping the BLE-pair → wake-AP → WiFi-join dance entirely and running
+at cable speed. Approach: enumerate the camera over Android's USB host API with the phone as host; if it
+presents as MTP, read it through the MediaStore path.
+
+**Blockers:** unknown whether an Osmo presents as MTP / mass-storage to an Android host or only through
+a proprietary DJI USB protocol, and which models do it at all — some default to charge-only and need a
+USB-mode toggle first. Needs a USB-C ↔ USB-C cable, a host-capable phone, and probably a capture of a
+wired Mimo transfer.
+
+### 15. Background downloads with a progress notification
+
+We want the download queue to survive leaving the app, with an ongoing notification: determinate
+progress, current filename, *n of m*, and pause/cancel. Today it is a bare `Thread` started by the
+Activity, so a multi-gigabyte transfer is at the mercy of process death and nothing shows in the shade.
+Resumable range requests already exist in `MediaDownloader`, so a killed transfer should resume rather
+than restart — that is most of the value of doing this.
+
+**Blockers:** the network binding, not the notification. Downloads only work because the process is
+bound to the camera AP (`bindProcessToNetwork`); a service has to own or share that binding and react
+when the AP drops. Android 14+ needs a declared `foregroundServiceType` (`dataSync`) plus
+`POST_NOTIFICATIONS`. And a queue that outlives the foreground session must not keep a drone transfer
+lease alive behind the user's back (#14).
+
+### 16. Per-file shooting details (ISO, shutter, EV…)
+
+We want what Mimo's playback screen shows — what the camera was *set to* when the file was shot. We show
+duration, fps, resolution and size, all manifest fields, and nothing about exposure.
+
+- **Stills — already on the wire.** The EXIF thumbnail path fetches the original's first 64 kB
+  ([EmbeddedJpeg](camera/media/src/main/java/dev/konraditurbe/osmosis/core/EmbeddedJpeg.kt)) and the same `APP1`
+  block carries ISO, exposure time, aperture and focal length. We download and discard them today, so
+  reading them costs one parse and **zero extra requests**. The obvious first increment.
+- **Video — the `djmd` track**, which is protobuf and not encrypted. Needs a range read of the right
+  atom rather than the whole clip.
+- **Drone — `file_subtype` 11 (`PHOTO_METADATA`) / 13 (`JSON`)**, named in the enum recovered from a
+  decompiled DJI-derived app ([MEDIA_PROTOCOL §29](MEDIA_PROTOCOL.md#29-http-media-api-v1--dcf-indexed))
+  but never requested against an aircraft. Subtypes 3–16 were refused on a Neo 2.
+
+### 18. Drones beyond the Mavic 3
+
+- **Neo 2 (`0x007e`) stalls at the session-open.** It hands over creds with the `DJI FLY` token and
+  handshakes on `udp/9003`, then fails with *no drone serial seen in a beacon*. The `0x51` open has to
+  echo the aircraft's serial, read out of its own `0x51/0x13` beacon
+  ([MEDIA_PROTOCOL §27a](MEDIA_PROTOCOL.md#27a-neo-2--the-same-transport-a-different-unlock)). Two
+  candidates, now instrumented rather than guessed: our parser required a serial of exactly 20 chars
+  (a Mavic 3's length), or the Neo 2 never emits the beacon. A failed open now logs every `0x51` inner
+  command and dumps any `0x13` payload, so the next run tells them apart. Secondary: its AP dropped
+  ~16 s in, 112 ms *before* the list query went out.
+- **Mini 3** — model byte unknown, so it resolves only by the `DRONE_ID_FLOOR` guess. It also enters
+  QuickTransfer differently: no hold-to-confirm at all, **three quick power-button presses** instead,
+  which is why the approval dialog needs its own line for it.
+- **Delete and favourite are camera-only.** Drone records carry no manifest handle, so
+  `CameraFile.deletable` is false and the long-press menu correctly offers neither. Wiring them means
+  finding what a drone deletes *by* — plausibly the packed `file_index` itself.
+- **Untested, would be cheap:** `/v2?storage=N&path=…` on a drone (believed to work, never exercised —
+  everything goes through `/v1`), and `PROXY_MOOV` / `ORIGIN_MOOV` (`file_subtype` 15/16), which serve
+  an MP4's `moov` alone and would replace the range request preview pays to find it.
+- **Any other aircraft.** Ids at or above `0x40` fall back to drone defaults on a documented guess
+  (`CameraModel.DRONE_ID_FLOOR`), which at least gets far enough to be diagnosable.
+
+**Branches: `support-neo2` and `support-mini3`** — the same payload on both, one commit each, because
+the diagnostic an unknown airframe needs is the same one. `DroneFrameCensus` answers what the existing
+logging can't: `0x51 inner cmds seen: NONE` says the aircraft doesn't talk like a Mavic without saying
+what it *does* do. So it censuses every CRC-valid frame by cmdset/cmd (nested included), the raw head
+of each transport packet type, and any payload carrying a **serial-shaped run** (12–24 uppercase
+alphanumerics) — which identifies the frame that carries the serial on *this* airframe even when it
+isn't a `0x51/0x13`. Strictly diagnostic: it never latches a serial or changes what we send, because a
+run that merely looks like a serial isn't one. `support-mini3` also carries the three-press line in the
+approval dialog. `PcapAnalysis` rides along on both for reading a capture with our own decoder.
+
+**Blockers:** hardware. Both branches are instrumentation waiting for one run each — nothing more can
+be deduced from what we have.
+
+### 19. Migrate to CompanionDeviceManager API
+
+CompanionDeviceManager will give us features such as auto-detect, less permissions, better handling for BLE, etc...
+
+### 20. Send HiLights while in playback
+
+Xtra specific, need to check if possible to send hilights
+
+### 21. UI icons overhaul
+
+Design an iconset, stop using emojis
+
+### 22. Show a tick for downloaded media
+
+Just after media is downloaded, stateless. When app is restarted, and camera connects again, tick won't be there. Just visual insight into what was just downloaded.
+
+### 23. Better camera disconnection flow
+
+Works great on osmo nano but xtra just prompts to go back to cameras or input password

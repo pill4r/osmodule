@@ -1,0 +1,36 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+**/build/
+/captures
+.externalNativeBuild
+.cxx
+/reference/
+/360 example/
+
+# Signing — NEVER commit the keystore or its passwords
+*.jks
+*.keystore
+/keystore.properties
+app-keystore.jks
+
+# Packet & BLE-HCI captures (may contain WiFi creds) — never commit
+*.pcap
+*.pcapng
+btsnoop*
+# JVM/msys crash droppings
+hs_err_pid*.log
+replay_pid*.log
+*.stackdump
+
+# Pulled device logs (dump-logs.sh) — device-specific, not source.
+logs-dump/
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc
+
+# Local secrets (GitLab token for F-Droid submission, etc.)
+.env

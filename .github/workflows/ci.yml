@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Test, lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: zulu
+          java-version: '21'
+
+      # setup-gradle validates the Wrapper and caches Gradle state automatically.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run unit tests, Lint and Debug builds
+        run: >-
+          ./gradlew --no-daemon --stacktrace
+          test lint
+          :core:plugin-api:publishPluginSdkPublicationToLocalPluginSdkRepository
+          :app:assembleDebug
+          :plugins:panorama360:assembleDebug
+          :plugins:rsdk:assembleDebug
+
+      - name: Upload test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports-${{ github.run_attempt }}
+          path: |
+            **/build/reports/tests/**
+            **/build/test-results/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Lint reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-reports-${{ github.run_attempt }}
+          path: |
+            **/build/reports/lint-results*.html
+            **/build/reports/lint-results*.xml
+            **/build/reports/lint-results*.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Base Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-base-debug-apk-${{ github.run_attempt }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Panorama 360 Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-panorama360-debug-apk-${{ github.run_attempt }}
+          path: plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload R-SDK Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-rsdk-debug-apk-${{ github.run_attempt }}
+          path: plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk
+          if-no-files-found: error
+          retention-days: 14

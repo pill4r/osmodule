@@ -1,0 +1,71 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'maven-publish'
+}
+
+group = 'dev.konraditurbe.osmodule'
+version = rootProject.pluginSdkVersion
+
+android {
+    namespace = 'dev.konraditurbe.osmosis.plugin'
+    compileSdk = 36
+
+    defaultConfig { minSdk = 29 }
+    buildFeatures { aidl = true }
+    publishing {
+        singleVariant('release') {
+            withSourcesJar()
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+    kotlinOptions { jvmTarget = '21' }
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            pluginSdk(MavenPublication) {
+                from components.release
+                artifactId = 'plugin-sdk'
+                pom {
+                    name = 'osmodule Plugin SDK'
+                    description = 'Versioned AIDL and Android helpers for official osmodule plugins.'
+                    url = 'https://github.com/pill4r/osmodule'
+                    licenses {
+                        license {
+                            name = 'MIT License'
+                            url = 'https://opensource.org/license/mit'
+                        }
+                    }
+                    scm {
+                        connection = 'scm:git:https://github.com/pill4r/osmodule.git'
+                        url = 'https://github.com/pill4r/osmodule'
+                    }
+                }
+            }
+        }
+        repositories {
+            maven {
+                name = 'LocalPluginSdk'
+                url = layout.buildDirectory.dir('repo')
+            }
+            maven {
+                name = 'GitHubPackages'
+                url = uri('https://maven.pkg.github.com/pill4r/osmodule')
+                credentials {
+                    username = System.getenv('GITHUB_ACTOR') ?: ''
+                    password = System.getenv('GITHUB_TOKEN') ?: ''
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    testImplementation 'junit:junit:4.13.2'
+}
