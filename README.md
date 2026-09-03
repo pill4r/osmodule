@@ -67,10 +67,15 @@ author. Normal Android logcat output remains available to local developers throu
 
 ## Install and connect
 
-Install `app-debug.apk` first. Install `panorama360-debug.apk` for interactive 360° playback and
-`rsdk-debug.apk` for remote control or GPS sync. Every installed APK must be built with the same
-signing key. On Xiaomi/Redmi/POCO devices, enable Autostart for the R-SDK plugin if HyperOS blocks
-its Binder service.
+For a published release, install the Base APK, open **Modules**, then use **Install from GitHub** for
+the 360 Viewer or R-SDK Remote plugin. Base downloads the corresponding APK from the latest published
+[GitHub Release](https://github.com/pill4r/osmodule/releases/latest), verifies its official package,
+manifest contract and signing certificate, and only then opens Android's Package Installer. The local
+APK picker remains available for offline installation and development builds.
+
+Debug APKs must come from the same CI run: install `app-debug.apk`, then select that run's
+`panorama360-debug.apk` and/or `rsdk-debug.apk` through **Choose local APK**. On Xiaomi/Redmi/POCO
+devices, enable Autostart for the R-SDK plugin if HyperOS blocks its Binder service.
 
 1. Turn on Bluetooth and Wi-Fi and open osmodule.
 2. Grant the requested nearby-device permissions.
@@ -84,6 +89,8 @@ its Binder service.
 osmodule communicates with the camera on its local, internet-less network (normally `192.168.2.1`).
 It has no analytics, account system, activation service or cloud upload. Cleartext HTTP is enabled
 because camera models serve media locally without TLS; application code supplies only camera-local URLs.
+The only user-initiated internet operation in Base is downloading an official plugin APK after
+**Install from GitHub** is tapped.
 
 ## Build
 
@@ -104,7 +111,9 @@ Outputs:
 
 Both plugins are optional. Users who only need ordinary media access install the Base APK. Release
 builds are unsigned unless a local `keystore.properties` is supplied; Base and plugin releases must
-use the same signing lineage.
+use the same signing lineage. CI uploads Base, Panorama 360 and R-SDK APKs as three separate workflow
+artifacts; GitHub artifact downloads are ZIP archives, while in-app installation uses raw APK assets
+from the latest published Release.
 
 ## Documentation
 

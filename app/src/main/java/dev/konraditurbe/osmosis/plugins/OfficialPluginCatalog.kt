@@ -5,9 +5,13 @@ import dev.konraditurbe.osmosis.plugin.PluginDescriptor
 
 /** The official Base accepts only these same-signature plugin identities and capabilities. */
 internal object OfficialPluginCatalog {
+    private const val LATEST_RELEASE_BASE =
+        "https://github.com/pill4r/osmodule/releases/latest/download"
+
     data class Policy(
         val packageName: String,
         val pluginId: String,
+        val releaseApkUrl: String,
         val requiredCapabilities: Set<String>,
         val allowedCapabilities: Set<String>,
     )
@@ -16,12 +20,14 @@ internal object OfficialPluginCatalog {
         Policy(
             packageName = PluginContract.PANORAMA_PACKAGE,
             pluginId = PluginContract.PANORAMA_PLUGIN_ID,
+            releaseApkUrl = "$LATEST_RELEASE_BASE/panorama360-release.apk",
             requiredCapabilities = setOf(PluginContract.CAPABILITY_MEDIA_360_VIEW),
             allowedCapabilities = setOf(PluginContract.CAPABILITY_MEDIA_360_VIEW),
         ),
         Policy(
             packageName = PluginContract.RSDK_PACKAGE,
             pluginId = PluginContract.RSDK_PLUGIN_ID,
+            releaseApkUrl = "$LATEST_RELEASE_BASE/rsdk-release.apk",
             requiredCapabilities = setOf(
                 PluginContract.CAPABILITY_RSDK_PANEL,
                 PluginContract.CAPABILITY_CAMERA_SESSION_OWNER,

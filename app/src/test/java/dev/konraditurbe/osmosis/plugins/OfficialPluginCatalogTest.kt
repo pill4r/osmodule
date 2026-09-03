@@ -4,7 +4,9 @@ import dev.konraditurbe.osmosis.plugin.PluginContract
 import dev.konraditurbe.osmosis.plugin.PluginDescriptor
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.net.URL
 
 class OfficialPluginCatalogTest {
     @Test
@@ -24,6 +26,30 @@ class OfficialPluginCatalogTest {
             OfficialPluginCatalog.validationIssue(
                 PluginContract.PANORAMA_PACKAGE,
                 descriptor.copy(capabilities = descriptor.capabilities + "camera.unreviewed"),
+            ),
+        )
+    }
+
+    @Test
+    fun everyOfficialPluginUsesARepositoryReleaseApk() {
+        OfficialPluginCatalog.policies.forEach { policy ->
+            assertTrue(
+                "Unexpected release URL for ${policy.packageName}",
+                PluginApkDownloader.isOfficialReleaseUrl(URL(policy.releaseApkUrl)),
+            )
+        }
+    }
+
+    @Test
+    fun downloadSourceRejectsNonRepositoryAndNonApkUrls() {
+        assertTrue(
+            !PluginApkDownloader.isOfficialReleaseUrl(
+                URL("https://example.com/pill4r/osmodule/releases/latest/download/rsdk-release.apk"),
+            ),
+        )
+        assertTrue(
+            !PluginApkDownloader.isOfficialReleaseUrl(
+                URL("https://github.com/pill4r/osmodule/releases/latest/download/notes.txt"),
             ),
         )
     }

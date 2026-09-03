@@ -53,7 +53,9 @@ osmodule 遵循三条原则：
 
 ## 安装与连接
 
-先安装 `app-debug.apk`。需要交互式 360° 播放时安装 `panorama360-debug.apk`，需要遥控或 GPS 同步时安装 `rsdk-debug.apk`。所有已安装 APK 必须使用同一签名密钥构建。在 Xiaomi、Redmi 或 POCO 设备上，如果 HyperOS 阻止 R-SDK 插件的 Binder 服务，请为该插件启用“自启动”。
+使用正式版本时，先安装 Base APK，再打开“模块”，通过“从 GitHub 安装”按需安装 360° 查看器或 R-SDK 远控插件。Base 会从[最新发布的 GitHub Release](https://github.com/pill4r/osmodule/releases/latest)下载对应 APK，校验其官方包名、Manifest 协议与签名证书，通过后才会打开 Android 系统安装器。离线安装和开发构建仍可使用“选择本地 APK”。
+
+Debug APK 必须来自同一次 CI：先安装 `app-debug.apk`，再通过“选择本地 APK”选择该次任务的 `panorama360-debug.apk` 和/或 `rsdk-debug.apk`。在 Xiaomi、Redmi 或 POCO 设备上，如果 HyperOS 阻止 R-SDK 插件的 Binder 服务，请为该插件启用“自启动”。
 
 1. 打开蓝牙和 Wi-Fi，然后启动 osmodule。
 2. 授予所需的附近设备权限。
@@ -66,7 +68,8 @@ osmodule 遵循三条原则：
 
 osmodule 只通过相机不连接互联网的本地网络（通常为 `192.168.2.1`）与相机通信，不包含数据
 分析、账号系统、激活服务或云端上传。由于不同相机型号通过无 TLS 的本地 HTTP 提供素材，
-应用允许明文 HTTP，但业务代码只提供相机本地 URL。
+应用允许明文 HTTP，但业务代码只提供相机本地 URL。Base 唯一由用户主动触发的互联网操作，
+是在点击“从 GitHub 安装”后下载官方插件 APK。
 
 ## 构建
 
@@ -85,7 +88,7 @@ osmodule 只通过相机不连接互联网的本地网络（通常为 `192.168.2
 - `plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk`
 - `plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk`
 
-两个插件都是可选的。只需要普通素材访问的用户仅安装 Base APK 即可。如果没有提供本地 `keystore.properties`，Release 构建会生成未签名 APK；Base 和插件的正式版本必须使用相同的签名谱系。
+两个插件都是可选的。只需要普通素材访问的用户仅安装 Base APK 即可。如果没有提供本地 `keystore.properties`，Release 构建会生成未签名 APK；Base 和插件的正式版本必须使用相同的签名谱系。CI 会把 Base、Panorama 360 和 R-SDK APK 分别上传为三个工作流产物；GitHub 的 Artifact 下载仍是 ZIP，而应用内安装使用最新已发布 Release 中的原始 APK 资源。
 
 ## 文档
 

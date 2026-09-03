@@ -70,13 +70,26 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Upload Debug APKs
+      - name: Upload Base Debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: osmodule-debug-apks-${{ github.run_attempt }}
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            plugins/panorama360/build/outputs/apk/debug/*.apk
-            plugins/rsdk/build/outputs/apk/debug/*.apk
+          name: osmodule-base-debug-apk-${{ github.run_attempt }}
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Panorama 360 Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-panorama360-debug-apk-${{ github.run_attempt }}
+          path: plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload R-SDK Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-rsdk-debug-apk-${{ github.run_attempt }}
+          path: plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk
           if-no-files-found: error
           retention-days: 14

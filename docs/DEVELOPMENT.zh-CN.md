@@ -99,12 +99,13 @@ adb shell am instrument -w \
 
 ## 发布流程
 
-`.github/workflows/ci.yml` 会在每次推送到 `main`、每个以 `main` 为目标的 Pull Request，以及手动触发时运行。该工作流不需要任何签名 Secret。任务会校验 Gradle Wrapper、恢复 Gradle 缓存、运行全部 JVM 和 Android 单元测试、执行全仓库 Lint、构建三个 Debug APK，并将测试报告、Lint 报告和 APK 作为工作流产物保留 14 天。同一个 ref 的旧任务会自动取消，避免过时提交继续占用 Runner。
+`.github/workflows/ci.yml` 会在每次推送到 `main`、每个以 `main` 为目标的 Pull Request，以及手动触发时运行。该工作流不需要任何签名 Secret。任务会校验 Gradle Wrapper、恢复 Gradle 缓存、运行全部 JVM 和 Android 单元测试、执行全仓库 Lint、构建三个 Debug APK，并将测试报告、Lint 报告和每个 APK 分别作为独立工作流产物保留 14 天。即使一个 Artifact 中只有一个 APK，GitHub 仍会把 Actions Artifact 包装为 ZIP。同一个 ref 的旧任务会自动取消，避免过时提交继续占用 Runner。
 
 匹配 `v*` 的应用标签会触发 `.github/workflows/build_app.yml`。CI 会验证 Gradle Wrapper、运行
-完整质量门禁、使用相同签名配置构建 Base 和两个插件、上传构建产物，并创建 GitHub Release
-草稿。匹配 `plugin-sdk-v*` 的标签会触发 `.github/workflows/publish_plugin_sdk.yml`，校验标签与
-版本一致后把 Release AAR 发布到 GitHub Packages。
+完整质量门禁、使用相同签名配置构建 Base 和两个插件、分别上传每个 APK，并创建带有稳定
+原始资源文件名（`app-release.apk`、`panorama360-release.apk` 和 `rsdk-release.apk`）的 GitHub
+Release。所有门禁通过后，工作流会发布该 Release，使模块管理器的最新版本链接可以使用。
+匹配 `plugin-sdk-v*` 的标签会触发 `.github/workflows/publish_plugin_sdk.yml`，校验标签与版本一致后把 Release AAR 发布到 GitHub Packages。
 
 仓库需要配置 `APP_KEYSTORE`、`STOREPASSWORD`、`KEYPASSWORD` 和 `KEYALIAS` 四个 Secret。它们只在 CI 内解码，绝不能提交到仓库。发布 Tag 前：
 

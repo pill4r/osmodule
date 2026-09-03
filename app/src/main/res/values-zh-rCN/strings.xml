@@ -18,8 +18,10 @@
     <string name="module_installed">已安装 · v%1$d · 协议 %2$d–%3$d</string>
     <string name="module_not_installed">未安装</string>
     <string name="module_issue">已阻止 · %1$s</string>
-    <string name="module_install_apk">安装 APK</string>
-    <string name="module_update_apk">更新 APK</string>
+    <string name="module_install_from_github">从 GitHub 安装</string>
+    <string name="module_update_from_github">从 GitHub 更新</string>
+    <string name="module_choose_local_apk">选择本地 APK</string>
+    <string name="module_downloading_apk">正在从 GitHub 下载…</string>
     <string name="module_app_info">应用信息</string>
     <string name="module_autostart_settings">自启动设置</string>
     <string name="module_open">打开</string>
@@ -30,6 +32,12 @@
     <string name="module_install_access">允许 osmodule 将所选插件 APK 交给 Android 系统安装器，然后返回此页面。</string>
     <string name="module_invalid_apk">插件被拒绝</string>
     <string name="module_copy_failed">无法读取所选 APK。</string>
+    <string name="module_download_failed_title">下载失败</string>
+    <string name="module_download_no_internet">当前没有经过验证的互联网连接。请断开相机 Wi-Fi 或启用移动数据，然后重试。</string>
+    <string name="module_download_http_error">GitHub 返回了 HTTP %1$d。请确认已发布的 Release 中包含该插件 APK。</string>
+    <string name="module_download_too_large">下载文件超过了插件 APK 的允许大小。</string>
+    <string name="module_download_invalid_source">官方插件下载链接无效。</string>
+    <string name="module_download_failed">无法从 GitHub 下载插件 APK。</string>
     <string name="module_remove_failed">无法打开 Android 的模块卸载界面。</string>
     <string name="module_descriptor_missing">已安装的应用没有提供有效模块。</string>
     <string name="module_rsdk_name">osmodule 远控模块</string>

@@ -15,6 +15,12 @@ an open marketplace. The current catalog contains:
 Base shows only catalog entries in Modules and rejects an installed or selected APK when its package,
 plugin ID or capability set falls outside that catalog. Matching the signing key alone is insufficient.
 
+Each catalog entry also owns an HTTPS URL for its APK in the latest published GitHub Release. The
+module manager downloads only repository release URLs, caps the download size, and uses an Android
+network validated for internet access so a camera's local Wi-Fi binding cannot intercept the request.
+The downloaded archive passes the same package, descriptor, capability and signer checks as a locally
+selected APK before Android's user-confirmed Package Installer is opened.
+
 ## Why this model
 
 Plugin requests may contain a camera network handle, local media URLs, Wi-Fi credentials or a BLE
@@ -30,10 +36,14 @@ stable while implementations evolve.
 
 - Base and every official release plugin are built from reviewed source and signed with the same
   release lineage.
-- App release tags are `vX.Y.Z`; CI builds Base and both plugin APKs and creates a draft release.
+- App release tags are `vX.Y.Z`; CI builds Base and both plugin APKs, uploads each APK as a separate
+  Actions artifact, and publishes a release after the quality gate passes.
 - Plugin SDK tags are `plugin-sdk-vX.Y.Z`; CI publishes the AAR to GitHub Packages.
 - Debug builds share Android's debug signer and are for local testing only.
-- Base verifies archives before handing them to Android's user-confirmed Package Installer.
+- Published release assets provide the stable raw APK URLs used by the module manager. Actions
+  artifacts are ZIP-wrapped, expire, and are not used as in-app installation sources.
+- Base verifies downloaded and locally selected archives before handing them to Android's
+  user-confirmed Package Installer.
 
 ## Adding an official plugin
 

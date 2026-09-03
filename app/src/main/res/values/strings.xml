@@ -18,8 +18,10 @@
     <string name="module_installed">Installed · v%1$d · protocol %2$d–%3$d</string>
     <string name="module_not_installed">Not installed</string>
     <string name="module_issue">Blocked · %1$s</string>
-    <string name="module_install_apk">Install APK</string>
-    <string name="module_update_apk">Update APK</string>
+    <string name="module_install_from_github">Install from GitHub</string>
+    <string name="module_update_from_github">Update from GitHub</string>
+    <string name="module_choose_local_apk">Choose local APK</string>
+    <string name="module_downloading_apk">Downloading from GitHub…</string>
     <string name="module_app_info">App info</string>
     <string name="module_autostart_settings">Autostart settings</string>
     <string name="module_open">Open</string>
@@ -30,6 +32,12 @@
     <string name="module_install_access">Allow osmodule to hand the selected plugin APK to Android’s Package Installer, then return here.</string>
     <string name="module_invalid_apk">Plugin rejected</string>
     <string name="module_copy_failed">Could not read the selected APK.</string>
+    <string name="module_download_failed_title">Download failed</string>
+    <string name="module_download_no_internet">No validated internet connection is available. Disconnect from the camera Wi-Fi or enable mobile data, then retry.</string>
+    <string name="module_download_http_error">GitHub returned HTTP %1$d. Check that a published release contains this plugin APK.</string>
+    <string name="module_download_too_large">The downloaded file is larger than the allowed plugin APK size.</string>
+    <string name="module_download_invalid_source">The official plugin download URL is invalid.</string>
+    <string name="module_download_failed">Could not download the plugin APK from GitHub.</string>
     <string name="module_remove_failed">Could not open Android’s module uninstaller.</string>
     <string name="module_descriptor_missing">The installed package does not expose a valid module.</string>
     <string name="module_rsdk_name">osmodule Remote Control</string>

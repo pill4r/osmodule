@@ -116,12 +116,16 @@ in the pull request or issue. Never add credentials or an unsanitized capture to
 `.github/workflows/ci.yml` runs on every push to `main`, every pull request targeting `main`, and on
 manual dispatch. It needs no signing secrets. The job validates the Gradle Wrapper, restores the
 Gradle cache, runs all JVM and Android unit tests, runs repository-wide Lint, builds all three Debug APKs,
-and retains test reports, Lint reports and APKs as workflow artifacts for 14 days. Concurrent runs on
-the same ref are cancelled so that only the newest revision consumes runner time.
+and retains test reports, Lint reports and each APK as a separate workflow artifact for 14 days.
+GitHub wraps every Actions artifact in a ZIP even when it contains one APK. Concurrent runs on the
+same ref are cancelled so that only the newest revision consumes runner time.
 
 Application tags matching `v*` trigger `.github/workflows/build_app.yml`. CI validates the Gradle
 wrapper, runs the full quality gate, builds Base and both plugins with the same signing configuration,
-uploads build artifacts and creates a draft GitHub release. SDK tags matching `plugin-sdk-v*` trigger
+uploads each APK as a separate build artifact and creates a GitHub release with stable raw asset names
+(`app-release.apk`, `panorama360-release.apk`, and `rsdk-release.apk`). After all gates pass, the
+workflow publishes the release so the module manager's latest-release URLs become available. SDK tags
+matching `plugin-sdk-v*` trigger
 `.github/workflows/publish_plugin_sdk.yml`, which verifies the tag/version match and publishes the
 release AAR to GitHub Packages.
 

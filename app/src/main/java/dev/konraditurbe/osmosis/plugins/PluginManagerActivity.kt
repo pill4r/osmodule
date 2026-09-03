@@ -34,6 +34,7 @@ class PluginManagerActivity : AppCompatActivity() {
     private var requestedPackage: String? = null
     private var pendingInstallFile: File? = null
     private var pendingInstallPackage: String? = null
+    private var downloadingPackage: String? = null
 
     private val apkPicker = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val expectedPackage = requestedPackage
@@ -208,7 +209,19 @@ class PluginManagerActivity : AppCompatActivity() {
             setPadding(0, dp(10), 0, 0)
         }
         actions.addView(MaterialButton(this).apply {
-            text = getString(if (packageInstalled) R.string.module_update_apk else R.string.module_install_apk)
+            text = getString(
+                when {
+                    downloadingPackage == known.packageName -> R.string.module_downloading_apk
+                    packageInstalled -> R.string.module_update_from_github
+                    else -> R.string.module_install_from_github
+                },
+            )
+            isEnabled = downloadingPackage == null
+            setOnClickListener { downloadFromGitHub(known.packageName) }
+        })
+        actions.addView(MaterialButton(this).apply {
+            text = getString(R.string.module_choose_local_apk)
+            isEnabled = downloadingPackage == null
             setOnClickListener { selectApk(known.packageName) }
         })
         if (record?.compatible == true && known.hasPermissionCenter) {
@@ -273,6 +286,39 @@ class PluginManagerActivity : AppCompatActivity() {
     private fun selectApk(packageName: String) {
         requestedPackage = packageName
         apkPicker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream"))
+    }
+
+    private fun downloadFromGitHub(expectedPackage: String) {
+        val source = OfficialPluginCatalog.policyFor(expectedPackage)?.releaseApkUrl
+        if (source == null) {
+            showDownloadError(getString(R.string.module_download_invalid_source))
+            return
+        }
+        downloadingPackage = expectedPackage
+        render()
+        Thread {
+            val result = runCatching {
+                val directory = File(cacheDir, "plugin-installs")
+                val apk = PluginApkDownloader.download(
+                    this,
+                    source,
+                    File(directory, "$expectedPackage.apk"),
+                )
+                apk to ExternalPluginRegistry.verifyArchive(apk, expectedPackage)
+            }
+            runOnUiThread {
+                downloadingPackage = null
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                render()
+                result.onSuccess { (apk, check) ->
+                    if (check.accepted) requestPackageInstall(apk, expectedPackage)
+                    else showError(check.reason ?: getString(R.string.module_invalid_apk))
+                }.onFailure { showDownloadError(downloadFailureMessage(it)) }
+            }
+        }.apply {
+            name = "osmodule-plugin-download"
+            isDaemon = true
+        }.start()
     }
 
     private fun uninstallPlugin(pluginPackage: String) {
@@ -365,6 +411,27 @@ class PluginManagerActivity : AppCompatActivity() {
             .setMessage(message)
             .setPositiveButton(android.R.string.ok, null)
             .show()
+    }
+
+    private fun showDownloadError(message: String) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.module_download_failed_title)
+            .setMessage(message)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun downloadFailureMessage(error: Throwable): String = when (error) {
+        is PluginApkDownloader.DownloadException -> when (error.failure) {
+            PluginApkDownloader.Failure.NO_INTERNET -> getString(R.string.module_download_no_internet)
+            PluginApkDownloader.Failure.HTTP -> getString(
+                R.string.module_download_http_error,
+                error.httpStatus ?: 0,
+            )
+            PluginApkDownloader.Failure.TOO_LARGE -> getString(R.string.module_download_too_large)
+            PluginApkDownloader.Failure.INVALID_SOURCE -> getString(R.string.module_download_invalid_source)
+        }
+        else -> getString(R.string.module_download_failed)
     }
 
     private fun showPluginStartError(pluginPackage: String, message: String) {
