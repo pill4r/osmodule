@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -106,6 +107,7 @@ jobs:
       # who grabs it instead of the real one gets "App not installed" over their existing install.
       # That happened on v1.3.1-rc1 and had to be cleaned up by hand.
       - name: Publish GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}

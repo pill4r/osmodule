@@ -129,6 +129,10 @@ matching `plugin-sdk-v*` trigger
 `.github/workflows/publish_plugin_sdk.yml`, which verifies the tag/version match and publishes the
 release AAR to GitHub Packages.
 
+The same application workflow supports manual dispatch for a non-publishing signing dry run. A manual
+run executes every quality gate and uploads signed Release and Debug artifacts, but the publish step is
+restricted to a `v*` tag ref.
+
 The required repository secrets are `APP_KEYSTORE`, `STOREPASSWORD`, `KEYPASSWORD` and `KEYALIAS`.
 They are decoded only inside CI and must not be committed. Before tagging a release:
 

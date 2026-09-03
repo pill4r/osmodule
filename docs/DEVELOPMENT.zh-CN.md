@@ -107,6 +107,9 @@ adb shell am instrument -w \
 Release。所有门禁通过后，工作流会发布该 Release，使模块管理器的最新版本链接可以使用。
 匹配 `plugin-sdk-v*` 的标签会触发 `.github/workflows/publish_plugin_sdk.yml`，校验标签与版本一致后把 Release AAR 发布到 GitHub Packages。
 
+同一个应用工作流也支持手动触发，用于不发布的签名演练。手动任务会执行全部质量门禁并上传
+已签名 Release 与 Debug 产物，但发布步骤被严格限制为仅在 `v*` 标签 ref 上运行。
+
 仓库需要配置 `APP_KEYSTORE`、`STOREPASSWORD`、`KEYPASSWORD` 和 `KEYALIAS` 四个 Secret。它们只在 CI 内解码，绝不能提交到仓库。发布 Tag 前：
 
 1. 当应用或插件产物发生变化时，更新对应版本号；
