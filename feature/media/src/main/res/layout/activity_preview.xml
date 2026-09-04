@@ -147,7 +147,7 @@
                     android:textSize="12sp" />
 
                 <!-- Custom SeekBar that also draws ◇ highlight marks on its own track. -->
-                <dev.konraditurbe.osmosis.ui.HighlightSeekBar
+                <dev.pillar.osmodule.ui.HighlightSeekBar
                     android:id="@+id/seekBar"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"

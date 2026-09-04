@@ -12,9 +12,9 @@ Osmo cameras. It has no DJI SDK dependency, built-in account system, analytics o
 brand-new camera must still be activated once with DJI Mimo before osmodule can connect to it.
 
 This project is derived from the open-source [Osmosis](https://github.com/KonradIT/osmosis) project,
-but is maintained and released as a distinct application. The legacy Android package namespace
-`dev.konraditurbe.osmosis` is retained for plugin-ABI compatibility; the product name, release
-artifacts and user-facing storage folders are osmodule.
+but is maintained and released as a distinct application. The Base app and its official plugins
+use the project-owned `dev.pillar.osmodule` Android namespace; release artifacts and user-facing
+storage folders use the osmodule name as well.
 
 ## Why osmodule?
 
@@ -37,8 +37,9 @@ auditable local-media client that can grow without turning the Base APK back int
 
 - Camera discovery and pairing over Bluetooth LE.
 - Media grid, thumbnails and low-resolution streaming preview.
-- Optional, independently installed interactive 360° video viewer with drag-to-look and pinch-to-zoom on Osmo 360; raw OSV
-  clips open in it automatically and stream their paired LRF proxy.
+- Optional, independently installed interactive 360° photo and video viewer with portrait/landscape
+  rotation, drag-to-look and pinch-to-zoom on Osmo 360; stitched 2:1 JPEGs and raw OSV clips open in
+  it automatically, with OSV playback streaming the paired LRF proxy.
 - High-resolution resumable downloads to a user-selected video directory, with
   `Movies/osmodule`, `Pictures/osmodule` and `Download/osmodule` as defaults.
 - In/out trimming with original-quality stream copy.
@@ -87,7 +88,8 @@ access point disabled and osmodule cannot connect to it.
 3. Power on the camera and select it from the Cameras list.
 4. Approve pairing on the camera, then approve Android's camera Wi-Fi join prompt.
 5. Open Modules to install the optional plugin for the connected camera.
-6. Browse, preview or download media. When the viewer plugin is installed, Osmo 360 OSV clips open in it.
+6. Browse, preview or download media. When the viewer plugin is installed, Osmo 360 panoramic JPEGs
+   and OSV clips open in it.
 
 ## Privacy
 

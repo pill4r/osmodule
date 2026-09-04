@@ -665,6 +665,7 @@ second after it is set unless the app keeps beating**, so entering it is not eno
 4. loop, ~1 Hz, until teardown:  0x00/0x88 sub-cmd 0x17
 5. every ~10 s:                  0x02/0x0c 01 01 00 01
 6. teardown only:                0x02/0x0c 01 01 00 00
+7. wait for bit 30 of 0x02/0x80 to clear; retry the leave up to 3 times
 ```
 
 **Wait for the reply at step 3.** The camera does not always answer the first enter — a Pocket 4 took
@@ -700,6 +701,13 @@ album:
 
 **The ~10 s re-assert is optional.** The mode stays on its own; the re-assert only covers being knocked
 out of it by something outside the protocol, such as a button press on the body.
+
+**Confirm the leave too.** A successful socket write (and even a `0x02/0x0c` status-0 reply) is not
+proof that the camera returned to capture mode. Keep receiving until bit 30 of `0x02/0x80` clears and
+only then report success. The leave is itself a command write: once a browse session is older than the
+empirical ~40 s write window, re-register on a fresh sequence space before sending it. Otherwise an
+Osmo 360 can silently discard the teardown frame and remain on its on-camera Playback screen after the
+app has left the album.
 
 **What playback does *not* gate:** status pushes (`0x02/0x80`, `0x02/0x82`) arrive unprompted once
 registered — 493 and 480 times in that 49 s session — so battery and storage need no polling either way.

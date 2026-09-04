@@ -16,7 +16,7 @@
         android:layout_height="match_parent"
         android:background="@drawable/rsdk_preview_background">
 
-        <dev.konraditurbe.osmosis.panorama.render.PanoramaSurfaceView
+        <dev.pillar.osmodule.panorama.render.PanoramaSurfaceView
             android:id="@+id/rsdkPreviewSurface"
             android:layout_width="match_parent"
             android:layout_height="match_parent"

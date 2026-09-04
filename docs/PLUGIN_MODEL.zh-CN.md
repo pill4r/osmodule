@@ -8,9 +8,9 @@ osmodule 官方发行版采用**仅官方、同签名的插件模型**，不是�
 
 | 插件 | 包名 | 必需能力 |
 |---|---|---|
-| 360° 查看器 | `dev.konraditurbe.osmosis.plugin.panorama360` | `camera.media.360-view` |
-| Osmo 360 遥控（R-SDK） | `dev.konraditurbe.osmosis.plugin.rsdk` | `camera.rsdk.remote-panel`、`camera.session.owner` |
-| Pocket 4P 遥控 | `dev.konraditurbe.osmosis.plugin.pocket4p` | `camera.pocket4p.remote-panel`、`camera.session.owner` |
+| 360° 查看器 | `dev.pillar.osmodule.plugin.panorama360` | `camera.media.360-view` |
+| Osmo 360 遥控（R-SDK） | `dev.pillar.osmodule.plugin.rsdk` | `camera.rsdk.remote-panel`、`camera.session.owner` |
+| Pocket 4P 遥控 | `dev.pillar.osmodule.plugin.pocket4p` | `camera.pocket4p.remote-panel`、`camera.session.owner` |
 
 Base 的“模块”页面只显示目录条目；已安装或用户选择的 APK 只要包名、插件 ID 或能力集合超出
 目录，就会被拒绝。仅仅使用相同签名密钥仍然不够。

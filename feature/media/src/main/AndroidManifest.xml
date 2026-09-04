@@ -25,7 +25,7 @@
 
     <application>
         <activity
-            android:name="dev.konraditurbe.osmosis.ui.MainActivity"
+            android:name="dev.pillar.osmodule.ui.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:launchMode="singleTop"
             android:exported="true">
@@ -35,11 +35,11 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="dev.konraditurbe.osmosis.ui.MediaPreviewActivity"
+            android:name="dev.pillar.osmodule.ui.MediaPreviewActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="false" />
         <activity
-            android:name="dev.konraditurbe.osmosis.ui.AboutActivity"
+            android:name="dev.pillar.osmodule.ui.AboutActivity"
             android:exported="false" />
 
         <provider
@@ -53,7 +53,7 @@
         </provider>
 
         <meta-data
-            android:name="dev.konraditurbe.osmosis.module.media"
-            android:value="dev.konraditurbe.osmosis.media.MediaFeatureModule" />
+            android:name="dev.pillar.osmodule.module.media"
+            android:value="dev.pillar.osmodule.media.MediaFeatureModule" />
     </application>
 </manifest>

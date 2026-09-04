@@ -17,13 +17,13 @@
 
     <application>
         <activity
-            android:name="dev.konraditurbe.osmosis.pocket4p.Pocket4pRemoteActivity"
+            android:name="dev.pillar.osmodule.pocket4p.Pocket4pRemoteActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:excludeFromRecents="true"
             android:exported="false" />
 
         <meta-data
-            android:name="dev.konraditurbe.osmosis.module.pocket4p-control"
-            android:value="dev.konraditurbe.osmosis.pocket4p.Pocket4pControlModule" />
+            android:name="dev.pillar.osmodule.module.pocket4p-control"
+            android:value="dev.pillar.osmodule.pocket4p.Pocket4pControlModule" />
     </application>
 </manifest>

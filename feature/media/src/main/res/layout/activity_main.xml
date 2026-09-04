@@ -218,7 +218,7 @@
                     tools:visibility="visible" />
             </LinearLayout>
 
-            <dev.konraditurbe.osmosis.ui.StatusPillView
+            <dev.pillar.osmodule.ui.StatusPillView
                 android:id="@+id/statusPill"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -355,6 +355,7 @@
                     android:visibility="gone">
 
                     <ImageView
+                        android:id="@+id/emptyGalleryIcon"
                         android:layout_width="48dp"
                         android:layout_height="48dp"
                         android:alpha="0.55"
@@ -362,7 +363,18 @@
                         android:src="@drawable/ic_media_empty"
                         app:tint="@color/osmo_muted" />
 
+                    <com.google.android.material.progressindicator.CircularProgressIndicator
+                        android:id="@+id/emptyGalleryProgress"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:indeterminate="true"
+                        android:visibility="gone"
+                        app:indicatorColor="@color/osmo_accent"
+                        app:indicatorSize="42dp"
+                        app:trackThickness="4dp" />
+
                     <TextView
+                        android:id="@+id/emptyGalleryTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"
@@ -373,6 +385,7 @@
                         android:textStyle="bold" />
 
                     <TextView
+                        android:id="@+id/emptyGalleryMessage"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"

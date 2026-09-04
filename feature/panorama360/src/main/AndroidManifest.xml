@@ -2,9 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity
-            android:name="dev.konraditurbe.osmosis.panorama.PanoramaVideoActivity"
+            android:name="dev.pillar.osmodule.panorama.PanoramaVideoActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:screenOrientation="sensorLandscape"
+            android:screenOrientation="fullSensor"
             android:exported="false" />
     </application>
 </manifest>

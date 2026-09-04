@@ -14,11 +14,11 @@ if (keystorePropsFile.exists()) {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis'
+    namespace = 'dev.pillar.osmodule'
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.konraditurbe.osmosis"
+        applicationId = "dev.pillar.osmodule"
         minSdk = 29
         targetSdk = 36
         // Must exceed every code already in a tester's hands: 20 went out as
@@ -29,7 +29,7 @@ android {
         // camera discovery and the generation-safe external camera-session bridge.
         versionCode = 33
         versionName = "1.6.0"
-        testInstrumentationRunner = "dev.konraditurbe.osmosis.plugins.PluginBindingInstrumentation"
+        testInstrumentationRunner = "dev.pillar.osmodule.plugins.PluginBindingInstrumentation"
     }
 
     signingConfigs {

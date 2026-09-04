@@ -14,11 +14,11 @@ if (releaseStoreFile != null && !releaseStoreFile.exists()) {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.plugin.pocket4p'
+    namespace = 'dev.pillar.osmodule.plugin.pocket4p'
     compileSdk = 36
 
     defaultConfig {
-        applicationId = 'dev.konraditurbe.osmosis.plugin.pocket4p'
+        applicationId = 'dev.pillar.osmodule.plugin.pocket4p'
         minSdk = 29
         targetSdk = 36
         versionCode = 1
@@ -58,7 +58,7 @@ android {
 }
 
 dependencies {
-    implementation "dev.konraditurbe.osmodule:plugin-sdk:${rootProject.pluginSdkVersion}"
+    implementation "dev.pillar.osmodule:plugin-sdk:${rootProject.pluginSdkVersion}"
     implementation project(':core:module-api')
     implementation project(':feature:control-pocket4p')
     implementation 'androidx.activity:activity:1.9.3'

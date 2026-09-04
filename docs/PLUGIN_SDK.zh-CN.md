@@ -2,7 +2,7 @@
 
 [English](PLUGIN_SDK.md) | [简体中文](PLUGIN_SDK.zh-CN.md)
 
-`dev.konraditurbe.osmodule:plugin-sdk:1.1.0` 是 osmodule 跨 APK 协议的独立 Android AAR。
+`dev.pillar.osmodule:plugin-sdk:1.3.0` 是 osmodule 跨 APK 协议的独立 Android AAR。
 它包含 `IOsmosisPlugin.aidl`、`PluginContract`、`PluginDescriptor` 和可复用的签名权限保护
 `PluginBootstrapProvider`，不依赖 Base，也不依赖任何相机、传输、协议或界面实现。
 
@@ -31,7 +31,7 @@ dependencyResolutionManagement {
 ```kotlin
 // 插件应用 build.gradle.kts
 dependencies {
-    implementation("dev.konraditurbe.osmodule:plugin-sdk:1.1.0")
+    implementation("dev.pillar.osmodule:plugin-sdk:1.3.0")
 }
 ```
 
@@ -56,8 +56,12 @@ PendingIntent。请求 Bundle 必须使用 `PluginContract` 键，并按不可�
 
 Maven 版本与 Binder 协议版本相互独立：
 
-SDK 1.1.0 新增 Pocket 4P 官方包/插件身份、远控面板能力和可选的相机型号请求键。这些都是
-新增的 Bundle 常量，因此 Binder 协议仍为版本 1，现有兼容插件继续有效。
+SDK 1.3.0 新增可选的相机 `Network` 请求键。Base 可以保留相机热点请求，并把网络句柄借给
+Pocket 远控；该键缺失或不可用时，插件会回退到自行加入 Wi-Fi。SDK 1.2.0 新增可选的全景
+来源类型请求键，用于区分旧有的双鱼眼视频代理流与已拼接的等距柱状全景照片；SDK 1.1.0
+新增了 Pocket 4P 身份和远控面板相关键。这些都是新增的
+Bundle 常量，因此 Binder 协议仍为版本 1。不过插件必须基于 `dev.pillar.osmodule` SDK
+命名空间重新构建；基于原 Osmosis 命名空间构建的 APK 与当前 Base 应用不具备二进制兼容性。
 
 - SDK 的补丁版或次版本可以新增可选键、常量或辅助类，而不改变协议 1；
 - 删除或改变 AIDL 方法、键语义或必填值时，必须升级 Binder 协议；

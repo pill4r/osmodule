@@ -12,12 +12,13 @@
 
 | 应用 | Gradle 模块 | Application ID | 用途 |
 |---|---|---|---|
-| osmodule Base | `:app` | `dev.konraditurbe.osmosis` | 相机发现和本地素材流程 |
-| 360° 查看器插件 | `:plugins:panorama360` | `dev.konraditurbe.osmosis.plugin.panorama360` | 可选的 Osmo 360 交互式播放 |
-| Osmo 360 遥控（R-SDK） | `:plugins:rsdk` | `dev.konraditurbe.osmosis.plugin.rsdk` | 可选的 Osmo 360 遥控、预览和 GPS 同步 |
-| Pocket 4P 遥控 | `:plugins:pocket4p` | `dev.konraditurbe.osmosis.plugin.pocket4p` | 可选的 Osmo Pocket 4 Pro 遥控和预览 |
+| osmodule Base | `:app` | `dev.pillar.osmodule` | 相机发现和本地素材流程 |
+| 360° 查看器插件 | `:plugins:panorama360` | `dev.pillar.osmodule.plugin.panorama360` | 可选的 Osmo 360 交互式播放 |
+| Osmo 360 遥控（R-SDK） | `:plugins:rsdk` | `dev.pillar.osmodule.plugin.rsdk` | 可选的 Osmo 360 遥控、预览和 GPS 同步 |
+| Pocket 4P 遥控 | `:plugins:pocket4p` | `dev.pillar.osmodule.plugin.pocket4p` | 可选的 Osmo Pocket 4 Pro 遥控和预览 |
 
-Base 包保留历史 Osmosis 命名空间，以维持升级路径和插件 ABI 兼容性。产品名称和发布身份为 osmodule。
+Base 应用及官方插件使用项目自有的 `dev.pillar.osmodule` 命名空间。使用原 Osmosis 命名空间
+的构建具有不同的 Android 应用身份与插件 ABI。
 
 ## 模块归属
 
@@ -49,14 +50,16 @@ Base 包保留历史 Osmosis 命名空间，以维持升级路径和插件 ABI �
 通信仅限于已发布的 Plugin SDK 和 Android 自带的 parcelable；monorepo 开发时会把 SDK Maven
 坐标替换为本地 `:core:plugin-api` 源码。兼容的官方插件必须：
 
-1. 暴露约定的 `dev.konraditurbe.osmosis.plugin.BIND` 服务 action；
-2. 持有签名级 `dev.konraditurbe.osmosis.permission.BIND_PLUGIN` 权限；
+1. 暴露约定的 `dev.pillar.osmodule.plugin.BIND` 服务 action；
+2. 持有签名级 `dev.pillar.osmodule.permission.BIND_PLUGIN` 权限；
 3. 匹配 `OfficialPluginCatalog` 中的包名、插件 ID 和能力策略；
 4. 使用与 Base 相同的签名谱系；
 5. 返回与 AIDL 协议版本兼容的描述符；
 6. 只通过服务返回的不可变 `PendingIntent` 启动私有界面。
 
-相机访问必须互斥。进程内客户端使用 `CameraSessionCoordinator`；Base 在打开素材传输前还会查询插件的运行状态。Binder 错误采取失败关闭策略。
+相机访问必须互斥。进程内客户端使用 `CameraSessionCoordinator`；Base 和插件中的每个传输层都
+会在连接前向 Base 的 `CameraSessionOwnerProvider` 申请租约。这个统一仲裁器不会在浏览素材时
+唤醒无关插件；租约申请失败时采取失败关闭策略。
 
 ## 构建与质量门禁
 
@@ -93,11 +96,11 @@ Base 包保留历史 Osmosis 命名空间，以维持升级路径和插件 ABI �
 
 单元测试无法覆盖 Android 安装包流程、OEM 后台限制、蓝牙硬件或相机网络。这些区域发生变更时，除了运行 Gradle 之外还必须进行设备验证。
 
-全新安装后的插件引导流程可以在没有相机时检查：
+全新安装后的插件发现流程可以在不启动插件、也不连接相机的情况下检查：
 
 ```sh
 adb shell am instrument -w \
-  dev.konraditurbe.osmosis.test/dev.konraditurbe.osmosis.plugins.PluginBindingInstrumentation
+  dev.pillar.osmodule.test/dev.pillar.osmodule.plugins.PluginBindingInstrumentation
 ```
 
 对于与相机通信有关的变更，请在 Pull Request 或 Issue 中记录手机型号、Android 版本、相机型号和相机固件。切勿向仓库添加凭据或未经脱敏的抓包。

@@ -20,7 +20,7 @@ jobs:
 
       # JDK 21 to match F-Droid's buildserver. Reproducible builds compare their APK against the
       # one this workflow attaches to the release, so the two toolchains have to agree — see
-      # AllowedAPKSigningKeys in metadata/dev.konraditurbe.osmosis.yml over in fdroiddata.
+      # AllowedAPKSigningKeys in metadata/dev.pillar.osmodule.yml over in fdroiddata.
       # Don't bump this without checking what F-Droid runs.
       - name: Set up JDK
         uses: actions/setup-java@v5

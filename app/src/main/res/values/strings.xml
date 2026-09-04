@@ -15,8 +15,8 @@
     <string name="module_pocket4p">Osmo Pocket 4 Pro</string>
     <string name="module_media_name">Pair, preview &amp; download</string>
     <string name="module_media_summary">Camera pairing, media browser, flat preview and resumable downloads.</string>
-    <string name="module_panorama_name">360° video viewer</string>
-    <string name="module_panorama_summary">Optional plugin APK for interactive playback with drag-to-look and pinch-to-zoom.</string>
+    <string name="module_panorama_name">360° media viewer</string>
+    <string name="module_panorama_summary">Optional plugin APK for interactive panoramic photo and video viewing with drag-to-look and pinch-to-zoom.</string>
     <string name="module_installed">Installed · v%1$d · protocol %2$d–%3$d</string>
     <string name="module_not_installed">Not installed</string>
     <string name="module_issue">Blocked · %1$s</string>

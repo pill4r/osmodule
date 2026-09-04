@@ -15,8 +15,8 @@
     <string name="module_pocket4p">Osmo Pocket 4 Pro</string>
     <string name="module_media_name">配对、预览与下载</string>
     <string name="module_media_summary">相机配对、媒体浏览、普通预览和断点续传下载。</string>
-    <string name="module_panorama_name">360° 全景视频查看</string>
-    <string name="module_panorama_summary">独立插件 APK，提供支持拖动视角与双指缩放的交互式全景播放。</string>
+    <string name="module_panorama_name">360° 全景素材查看</string>
+    <string name="module_panorama_summary">独立插件 APK，支持以拖动视角和双指缩放交互查看全景照片与视频。</string>
     <string name="module_installed">已安装 · v%1$d · 协议 %2$d–%3$d</string>
     <string name="module_not_installed">未安装</string>
     <string name="module_issue">已阻止 · %1$s</string>

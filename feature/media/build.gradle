@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.feature.media'
+    namespace = 'dev.pillar.osmodule.feature.media'
     compileSdk = 36
 
     defaultConfig {

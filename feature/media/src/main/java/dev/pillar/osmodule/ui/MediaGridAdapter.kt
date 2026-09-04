@@ -1,0 +1,348 @@
+package dev.pillar.osmodule.ui
+
+import android.content.Context
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.CheckBox
+import android.widget.ImageView
+import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.RecyclerView
+import dev.pillar.osmodule.feature.media.R
+import dev.pillar.osmodule.core.CameraFile
+import dev.pillar.osmodule.core.TrimRange
+import dev.pillar.osmodule.core.thumbUrlPath
+import dev.pillar.osmodule.net.ImageLoader
+import dev.pillar.osmodule.net.MetaLoader
+import java.util.Calendar
+
+/**
+ * The gallery grid. A [RecyclerView.Adapter] with two row types: **date headers** (full-width, e.g.
+ * "TODAY" / "YESTERDAY" / "30 JUL 2026") and **media cells**. The flat [rows] list is rebuilt from the
+ * backing [all] whenever the filter, select mode, or the file set changes; headers are inserted on each
+ * date change (the list arrives already sorted newest-first).
+ *
+ * Selection is keyed by the file's **path** (stable across filtering/pagination), not a grid position.
+ * Tapping a cell opens the preview via [onOpen]; in **select mode** a tap in the cell's top-right
+ * quadrant toggles its download checkbox instead — except on burst/interval groups (many frames), which
+ * always open the preview so the user can pick the frame there.
+ */
+class MediaGridAdapter(
+    private val context: Context,
+    initial: List<CameraFile>,
+    private val loader: ImageLoader,
+    private val meta: MetaLoader,
+    private val spanCount: Int,
+    private val onOpen: (CameraFile) -> Unit,
+    private val onLongPress: (CameraFile) -> Unit = {},
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    enum class TypeFilter { ALL, PHOTOS, VIDEOS }
+
+    // Month abbreviations for the "30 JUL 2026" date headers, from resources so they localize.
+    private val months: Array<String> = context.resources.getStringArray(R.array.month_abbreviations)
+
+    // Backing list grows as older pages load on scroll (append only).
+    private val all: MutableList<CameraFile> = initial.toMutableList()
+
+    var typeFilter: TypeFilter = TypeFilter.ALL; private set
+    var favedOnly: Boolean = false; private set
+    var selectMode: Boolean = false; private set
+
+    /** Fired whenever the queued set changes, so the host can refresh a count/FAB. */
+    var onQueueChanged: (() -> Unit)? = null
+
+    // path -> optional trim (null = whole file). Presence in the map = queued.
+    private val selected = LinkedHashMap<String, TrimRange?>()
+    // path -> the specific burst frame the user chose (from the preview) instead of the group's lead.
+    private val selectedMember = HashMap<String, CameraFile>()
+
+    private sealed class Row {
+        data class Header(val label: String) : Row()
+        data class Item(val file: CameraFile) : Row()
+    }
+    private var rows: List<Row> = emptyList()
+
+    init { sortNewestFirst(); rows = buildRows() }   // page 1 can be multi-store too — see sortNewestFirst
+
+    // ---- row assembly ------------------------------------------------------
+
+    private fun passesFilter(f: CameraFile): Boolean {
+        if (favedOnly && !f.starred) return false
+        return when (typeFilter) {
+            TypeFilter.ALL -> true
+            TypeFilter.PHOTOS -> !f.isVideo
+            TypeFilter.VIDEOS -> f.isVideo
+        }
+    }
+
+    private fun buildRows(): List<Row> {
+        val out = ArrayList<Row>(all.size + 16)
+        var lastYmd: String? = null
+        for (f in all) {
+            if (!passesFilter(f)) continue
+            val ymd = f.ymd
+            if (ymd != lastYmd) { out.add(Row.Header(headerLabel(ymd))); lastYmd = ymd }
+            out.add(Row.Item(f))
+        }
+        return out
+    }
+
+    /** Swap in a freshly-built row list and dispatch the minimal diff, so the default item animator
+     *  fades/slides cells in and out (e.g. when a Photos/Videos/Faved filter toggles) instead of the
+     *  hard snap of notifyDataSetChanged(). */
+    private fun setRows(newRows: List<Row>) {
+        val old = rows
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = old.size
+            override fun getNewListSize() = newRows.size
+            override fun areItemsTheSame(o: Int, n: Int): Boolean {
+                val a = old[o]; val b = newRows[n]
+                return when {
+                    a is Row.Header && b is Row.Header -> a.label == b.label
+                    a is Row.Item && b is Row.Item -> a.file.path == b.file.path
+                    else -> false
+                }
+            }
+            override fun areContentsTheSame(o: Int, n: Int): Boolean {
+                val a = old[o]; val b = newRows[n]
+                return a is Row.Item && b is Row.Item && a.file == b.file ||
+                    a is Row.Header && b is Row.Header && a.label == b.label
+            }
+        })
+        rows = newRows
+        diff.dispatchUpdatesTo(this)
+    }
+
+    /** "TODAY" / "YESTERDAY" for the two most recent days, else "30 JUL 2026"; "" → "UNKNOWN DATE". */
+    private fun headerLabel(ymd: String): String {
+        if (ymd.length != 8) return context.getString(R.string.date_unknown)
+        val now = Calendar.getInstance()
+        val today = ymdOf(now)
+        now.add(Calendar.DAY_OF_YEAR, -1)
+        val yesterday = ymdOf(now)
+        return when (ymd) {
+            today -> context.getString(R.string.today)
+            yesterday -> context.getString(R.string.yesterday)
+            else -> {
+                val day = ymd.substring(6, 8).trimStart('0').ifEmpty { "0" }
+                val month = ymd.substring(4, 6).toIntOrNull() ?: 0
+                val mon = months.getOrElse(month - 1) { "?" }
+                context.getString(R.string.date_header, day, mon, ymd.substring(0, 4))
+            }
+        }
+    }
+
+    private fun ymdOf(c: Calendar): String =
+        "%04d%02d%02d".format(c.get(Calendar.YEAR), c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH))
+
+    // ---- RecyclerView plumbing ---------------------------------------------
+
+    override fun getItemCount() = rows.size
+    override fun getItemViewType(position: Int) =
+        if (rows[position] is Row.Header) TYPE_HEADER else TYPE_ITEM
+
+    fun isHeader(position: Int) = position in rows.indices && rows[position] is Row.Header
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inf = LayoutInflater.from(parent.context)
+        return if (viewType == TYPE_HEADER)
+            HeaderVH(inf.inflate(R.layout.item_media_header, parent, false))
+        else ItemVH(inf.inflate(R.layout.item_media, parent, false))
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (val row = rows[position]) {
+            is Row.Header -> (holder as HeaderVH).label.text = row.label
+            is Row.Item -> (holder as ItemVH).bind(row.file)
+        }
+    }
+
+    private class HeaderVH(v: View) : RecyclerView.ViewHolder(v) {
+        val label: TextView = v.findViewById(R.id.headerLabel)
+    }
+
+    inner class ItemVH(v: View) : RecyclerView.ViewHolder(v) {
+        private val thumb: ImageView = v.findViewById(R.id.thumb)
+        private val check: CheckBox = v.findViewById(R.id.check)
+        private val name: TextView = v.findViewById(R.id.name)
+        private val badge: ImageView = v.findViewById(R.id.star)
+        private val selectionOverlay: View = v.findViewById(R.id.selectionOverlay)
+        private var file: CameraFile? = null
+
+        init {
+            v.clipToOutline = true
+            v.setOnClickListener {
+                val f = file ?: return@setOnClickListener
+                // In selection mode the entire tile is the target. Burst groups still open their preview,
+                // because a specific frame has to be chosen before they can enter the queue.
+                if (selectMode && !f.isBurst) toggleQueue(f)
+                else onOpen(f)
+            }
+            v.setOnLongClickListener { file?.let(onLongPress); true }
+        }
+
+        fun bind(f: CameraFile) {
+            file = f
+            val queued = selected.containsKey(f.path)
+            check.visibility = if (selectMode || queued) View.VISIBLE else View.GONE
+            check.isChecked = queued
+            selectionOverlay.visibility = if (queued) View.VISIBLE else View.GONE
+            itemView.isActivated = queued
+            badge.setImageResource(when {
+                f.starred -> R.drawable.ic_favorite
+                f.isBurst -> R.drawable.ic_burst
+                f.isPanorama -> R.drawable.ic_panorama
+                f.isVideo -> R.drawable.ic_video
+                else -> R.drawable.ic_photo
+            })
+            badge.contentDescription = context.getString(when {
+                f.starred -> R.string.media_badge_favorite
+                f.isBurst -> R.string.media_badge_burst
+                f.isPanorama -> R.string.media_badge_panorama
+                f.isVideo -> R.string.media_badge_video
+                else -> R.string.media_badge_photo
+            })
+            itemView.contentDescription = context.getString(
+                R.string.media_item_description,
+                f.name,
+                badge.contentDescription,
+                context.getString(if (queued) R.string.media_selected else R.string.media_not_selected),
+            )
+            loader.load(f.thumbUrlPath(), thumb)
+            val prefix = "%04d".format(f.seq) + (if (selected[f.path] != null) " ✂" else "")
+            meta.load(f, name, prefix)
+        }
+    }
+
+    // ---- queue / selection --------------------------------------------------
+
+    private fun rowIndexOfPath(path: String): Int =
+        rows.indexOfFirst { it is Row.Item && it.file.path == path }
+
+    private fun toggleQueue(f: CameraFile) {
+        if (selected.containsKey(f.path)) { selected.remove(f.path); selectedMember.remove(f.path) }
+        else selected[f.path] = null
+        rowIndexOfPath(f.path).takeIf { it >= 0 }?.let { notifyItemChanged(it) }
+        onQueueChanged?.invoke()
+    }
+
+    fun isQueuedPath(path: String): Boolean = selected.containsKey(path)
+    fun trimForPath(path: String): TrimRange? = selected[path]
+    fun fileForPath(path: String): CameraFile? = all.firstOrNull { it.path == path }
+
+    /** Apply the preview's add/remove + optional trim; [member] is the exact burst frame to queue (else lead). */
+    fun setQueuedByPath(path: String, queued: Boolean, trim: TrimRange? = null, member: CameraFile? = null) {
+        if (queued) {
+            selected[path] = trim
+            if (member != null) selectedMember[path] = member else selectedMember.remove(path)
+        } else {
+            selected.remove(path); selectedMember.remove(path)
+        }
+        val i = rowIndexOfPath(path)
+        if (i >= 0) notifyItemChanged(i) else notifyDataSetChanged()
+        onQueueChanged?.invoke()
+    }
+
+    /** Reflect a favorite toggle (from the grid long-press) on the ❤️ badge. */
+    fun setStarredByPath(path: String, starred: Boolean) {
+        val idx = all.indexOfFirst { it.path == path }
+        if (idx < 0 || all[idx].starred == starred) return
+        all[idx] = all[idx].copy(starred = starred)
+        // A faved-only view may gain/lose this cell, so re-diff; otherwise just repaint its badge.
+        if (favedOnly) { setRows(buildRows()); return }
+        val i = rowIndexOfPath(path).takeIf { it >= 0 } ?: return
+        // Row.Item holds a COPY of the file taken when buildRows() ran, so updating `all` alone leaves
+        // the bound row stale and notifyItemChanged repaints the same ❤️-less cell. Replace the row too.
+        rows = rows.toMutableList().also { it[i] = Row.Item(all[idx]) }
+        notifyItemChanged(i)
+    }
+
+    /** The filtered items in display order (no headers) — the list the preview swipes through. */
+    fun visibleFiles(): List<CameraFile> = rows.mapNotNull { (it as? Row.Item)?.file }
+    fun visibleItemCount(): Int = rows.count { it is Row.Item }
+    fun visibleIndexOf(path: String): Int = visibleFiles().indexOfFirst { it.path == path }
+
+    fun selectedEntries(): List<Pair<CameraFile, TrimRange?>> =
+        selected.entries.map { (selectedMember[it.key] ?: fileForPath(it.key)!!) to it.value }
+    /** The queue keys (cell paths) in the SAME order as [selectedEntries] — for mapping a job index back
+     *  to the cell to dequeue after a successful download. */
+    fun selectedKeys(): List<String> = selected.keys.toList()
+    fun selectedCount() = selected.size
+    fun totalFiles() = all.size
+    fun allFilesSnapshot(): List<CameraFile> = all.toList()
+
+    /** Drop the given cells from the queue (called after they successfully download). */
+    fun dequeuePaths(paths: Collection<String>) {
+        var changed = false
+        for (p in paths) if (selected.containsKey(p)) { selected.remove(p); selectedMember.remove(p); changed = true }
+        if (changed) { notifyDataSetChanged(); onQueueChanged?.invoke() }
+    }
+
+    /** Append the next (older) page; queued set (path-keyed) is unaffected. New cells fade in via the diff. */
+    fun append(more: List<CameraFile>) {
+        if (more.isEmpty()) return
+        all.addAll(more)
+        sortNewestFirst()
+        setRows(buildRows())
+    }
+
+    /**
+     * Order the backing list by capture time, newest first.
+     *
+     * A single-store manifest already arrives sorted, which is why this never existed. A MULTI-store one
+     * does not: the camera sends one list per store, so a Nano with a card in its dock emits its SD list
+     * and then its internal list, and the two interleave by store rather than by date. Observed: an SD
+     * clip shot 5 October landed between two internal clips shot 29 November, because it led its page.
+     *
+     * [CameraFile.timestamp] is the `YYYYMMDDHHMMSS` out of the filename, so a plain descending string
+     * sort is chronological. Records without one (a drone's `DJI_0554.MP4` carries no timestamp) sort to
+     * the end and keep their manifest order, the sort being stable.
+     */
+    private fun sortNewestFirst() {
+        all.sortWith(compareByDescending { it.timestamp.ifEmpty { "0" } })
+    }
+
+    // ---- filter / mode toggles (driven by the toolbar chips) ----------------
+
+    fun setTypeFilter(f: TypeFilter) {
+        if (typeFilter == f) return
+        typeFilter = f; setRows(buildRows())
+    }
+
+    fun setFavedOnly(on: Boolean) {
+        if (favedOnly == on) return
+        favedOnly = on; setRows(buildRows())
+    }
+
+    fun setSelectMode(on: Boolean) {
+        if (selectMode == on) return
+        selectMode = on
+        notifyDataSetChanged()   // toggles checkbox visibility on every cell
+    }
+
+    /** Select-mode bulk helper (long-press the Select chip): queue / clear every currently-visible,
+     *  non-burst cell. Bursts are skipped (they queue a specific frame via the preview). */
+    fun selectAllVisible(select: Boolean) {
+        for (r in rows) if (r is Row.Item && !r.file.isBurst) {
+            if (select) selected.putIfAbsent(r.file.path, null)
+            else { selected.remove(r.file.path); selectedMember.remove(r.file.path) }
+        }
+        notifyDataSetChanged()
+        onQueueChanged?.invoke()
+    }
+
+    fun clearSelection() {
+        if (selected.isEmpty()) return
+        selected.clear()
+        selectedMember.clear()
+        notifyDataSetChanged()
+        onQueueChanged?.invoke()
+    }
+
+    companion object {
+        private const val TYPE_HEADER = 0
+        private const val TYPE_ITEM = 1
+    }
+}

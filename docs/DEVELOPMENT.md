@@ -16,13 +16,13 @@ It produces four applications:
 
 | Application | Gradle module | Application ID | Purpose |
 |---|---|---|---|
-| osmodule Base | `:app` | `dev.konraditurbe.osmosis` | Camera discovery and local media workflows |
-| 360 Viewer plugin | `:plugins:panorama360` | `dev.konraditurbe.osmosis.plugin.panorama360` | Optional interactive Osmo 360 playback |
-| Osmo 360 RC (R-SDK) | `:plugins:rsdk` | `dev.konraditurbe.osmosis.plugin.rsdk` | Optional Osmo 360 remote control, preview and GPS sync |
-| Pocket 4P RC | `:plugins:pocket4p` | `dev.konraditurbe.osmosis.plugin.pocket4p` | Optional Osmo Pocket 4 Pro remote control and preview |
+| osmodule Base | `:app` | `dev.pillar.osmodule` | Camera discovery and local media workflows |
+| 360 Viewer plugin | `:plugins:panorama360` | `dev.pillar.osmodule.plugin.panorama360` | Optional interactive Osmo 360 playback |
+| Osmo 360 RC (R-SDK) | `:plugins:rsdk` | `dev.pillar.osmodule.plugin.rsdk` | Optional Osmo 360 remote control, preview and GPS sync |
+| Pocket 4P RC | `:plugins:pocket4p` | `dev.pillar.osmodule.plugin.pocket4p` | Optional Osmo Pocket 4 Pro remote control and preview |
 
-The Base package keeps the historical Osmosis namespace for upgrade and plugin-ABI compatibility.
-The product name and release identity are osmodule.
+The Base app and official plugins use the project-owned `dev.pillar.osmodule` namespace. Builds
+using the former Osmosis namespace have a different Android identity and plugin ABI.
 
 ## Module ownership
 
@@ -57,15 +57,17 @@ or read plugin resources directly. Communication is limited to the published Plu
 Android-owned parcelables. The monorepo replaces the SDK Maven coordinate with local
 `:core:plugin-api` source while developing. A compatible official plugin must:
 
-1. expose the documented `dev.konraditurbe.osmosis.plugin.BIND` service action;
-2. hold the signature-level `dev.konraditurbe.osmosis.permission.BIND_PLUGIN` permission;
+1. expose the documented `dev.pillar.osmodule.plugin.BIND` service action;
+2. hold the signature-level `dev.pillar.osmodule.permission.BIND_PLUGIN` permission;
 3. match a package, plugin ID and capability policy in `OfficialPluginCatalog`;
 4. use the same signing lineage as Base;
 5. return a descriptor compatible with the AIDL protocol version; and
 6. launch private UI only through the immutable `PendingIntent` returned by the service.
 
-Camera access is exclusive. In-process clients use `CameraSessionCoordinator`; Base also queries the
-plugin runtime state before opening its media transport. Binder errors fail closed.
+Camera access is exclusive. In-process clients use `CameraSessionCoordinator`; every Base or plugin
+transport acquires a lease from Base's `CameraSessionOwnerProvider` immediately before connecting.
+This central arbiter avoids waking unrelated plugins during media browsing and fails closed when a
+lease cannot be acquired.
 
 ## Build and quality gates
 
@@ -106,11 +108,11 @@ repository `.gitignore` excludes these common sources of sensitive or oversized 
 Unit tests do not exercise Android package installation, OEM background restrictions, Bluetooth
 hardware or the camera network. Changes to those areas need a device pass in addition to Gradle.
 
-The fresh-install plugin bootstrap path can be checked without a camera:
+Fresh-install plugin discovery can be checked without starting a plugin or connecting a camera:
 
 ```sh
 adb shell am instrument -w \
-  dev.konraditurbe.osmosis.test/dev.konraditurbe.osmosis.plugins.PluginBindingInstrumentation
+  dev.pillar.osmodule.test/dev.pillar.osmodule.plugins.PluginBindingInstrumentation
 ```
 
 For camera-facing changes, record the phone model, Android version, camera model and camera firmware

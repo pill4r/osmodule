@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.feature.control.pocket4p'
+    namespace = 'dev.pillar.osmodule.feature.control.pocket4p'
     compileSdk = 36
 
     defaultConfig {

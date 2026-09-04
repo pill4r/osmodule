@@ -9,7 +9,7 @@ RC (R-SDK) and Pocket 4P RC own their code, resources, permissions and Android l
 ## APK and module graph
 
 ```text
-Base — dev.konraditurbe.osmosis
+Base — dev.pillar.osmodule
   :app
     ├─ :core:module-api
     ├─ :core:plugin-api                 AIDL client contract
@@ -19,23 +19,23 @@ Base — dev.konraditurbe.osmosis
          ├─ :protocol:duml
          └─ :core:camera-session
 
-360 Viewer — dev.konraditurbe.osmosis.plugin.panorama360
+360 Viewer — dev.pillar.osmodule.plugin.panorama360
   :plugins:panorama360
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
+    ├─ dev.pillar.osmodule:plugin-sdk:1.3.0
     └─ :feature:panorama360
          └─ :core:panorama-renderer
 
-Osmo 360 RC (R-SDK) — dev.konraditurbe.osmosis.plugin.rsdk
+Osmo 360 RC (R-SDK) — dev.pillar.osmodule.plugin.rsdk
   :plugins:rsdk
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
+    ├─ dev.pillar.osmodule:plugin-sdk:1.3.0
     └─ :feature:control-rsdk
          ├─ :protocol:rsdk
          ├─ :transport:ble
          └─ :core:camera-session
 
-Pocket 4P RC — dev.konraditurbe.osmosis.plugin.pocket4p
+Pocket 4P RC — dev.pillar.osmodule.plugin.pocket4p
   :plugins:pocket4p
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
+    ├─ dev.pillar.osmodule:plugin-sdk:1.3.0
     └─ :feature:control-pocket4p
          ├─ :core:common
          ├─ :core:module-api
@@ -52,7 +52,7 @@ source sharing, not an APK/runtime dependency on Base.
 
 ## Runtime boundary
 
-All plugins expose `dev.konraditurbe.osmosis.plugin.BIND`. Protocol v1 deliberately has four calls:
+All plugins expose `dev.pillar.osmodule.plugin.BIND`. Protocol v1 deliberately has four calls:
 
 - `getProtocolVersion()` selects the wire contract;
 - `getDescriptor()` returns identity, version, protocol range and capabilities;
@@ -67,6 +67,11 @@ When Base opens a 360° clip it sends only the title, Osmo model key, local prev
 Android `Network` already connected to the camera. The viewer binds its own process to that network
 for playback and restores the prior process network when it closes. No viewer Activity is packaged
 in Base.
+
+Pocket 4P remote handoff uses the same optional-`Network` pattern. Base keeps its
+`WifiNetworkSpecifier` request alive, closes only the media protocol session, and lends the network
+handle to the plugin. On return it reacquires camera-session ownership and reopens media without a
+second Android Wi-Fi join. The media and remote DUML sessions remain mutually exclusive.
 
 ## Official-only trust policy
 
@@ -87,11 +92,10 @@ the official Base. See [Plugin distribution model](PLUGIN_MODEL.md).
 
 ## Camera-session ownership
 
-`core:camera-session` is the process-local lock used by transports inside each APK. Base also queries
-plugins advertising `camera.session.owner` before opening its media transport. Osmo 360 RC and GPS
-share one R-SDK session hub in their plugin process, while Pocket 4P RC reports its DUML session
-through the same cross-process ownership contract. Binder errors fail closed for ownership and
-identity checks.
+`core:camera-session` is the process-local lock used by transports inside each APK. Cross-process
+exclusion is enforced by Base's `CameraSessionOwnerProvider`: Base media, Osmo 360 RC/GPS and Pocket
+4P RC acquire the same atomic lease immediately before starting a camera transport. Gallery entry
+does not query or wake unrelated plugin processes. Provider errors fail closed for ownership checks.
 
 ## Build outputs
 

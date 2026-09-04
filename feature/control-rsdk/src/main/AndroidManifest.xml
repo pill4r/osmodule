@@ -26,23 +26,23 @@
 
     <application>
         <activity
-            android:name="dev.konraditurbe.osmosis.rsdk.RsdkRemoteActivity"
+            android:name="dev.pillar.osmodule.rsdk.RsdkRemoteActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:excludeFromRecents="true"
             android:exported="false" />
 
         <activity
-            android:name="dev.konraditurbe.osmosis.rsdk.RsdkModePickerActivity"
+            android:name="dev.pillar.osmodule.rsdk.RsdkModePickerActivity"
             android:excludeFromRecents="true"
             android:exported="false" />
 
         <service
-            android:name="dev.konraditurbe.osmosis.rsdk.GpsService"
+            android:name="dev.pillar.osmodule.rsdk.GpsService"
             android:exported="false"
             android:foregroundServiceType="location" />
 
         <meta-data
-            android:name="dev.konraditurbe.osmosis.module.rsdk-control"
-            android:value="dev.konraditurbe.osmosis.rsdk.RsdkControlModule" />
+            android:name="dev.pillar.osmodule.module.rsdk-control"
+            android:value="dev.pillar.osmodule.rsdk.RsdkControlModule" />
     </application>
 </manifest>

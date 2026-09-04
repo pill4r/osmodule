@@ -117,9 +117,7 @@
     <string name="gps_active_select_blocked">Синхронізація GPS активна — зупиніть її кнопкою GPS перед вибором камери.</string>
     <string name="gps_stop_before_browse">Зупиніть синхронізацію GPS перед переглядом медіа.</string>
     <string name="camera_session_busy">Інший модуль камери використовує з’єднання. Зупиніть його перед переглядом медіа.</string>
-    <string name="external_module_camera_busy">%1$s використовує %2$s. Зупиніть цей модуль перед переглядом медіафайлів.</string>
-    <string name="external_module_check_failed">Не вдалося перевірити використання камери плагіном: %1$s</string>
-    <string name="external_module_unknown">Інший модуль</string>
+    <string name="external_module_check_failed">Не вдалося зарезервувати з’єднання з камерою: %1$s</string>
 
     <!-- GPS sync notification -->
     <string name="notif_channel_gps">Синхронізація GPS</string>

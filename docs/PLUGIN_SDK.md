@@ -2,7 +2,7 @@
 
 [English](PLUGIN_SDK.md) | [简体中文](PLUGIN_SDK.zh-CN.md)
 
-`dev.konraditurbe.osmodule:plugin-sdk:1.1.0` is the standalone Android AAR for the osmodule
+`dev.pillar.osmodule:plugin-sdk:1.3.0` is the standalone Android AAR for the osmodule
 cross-APK contract. It contains `IOsmosisPlugin.aidl`, `PluginContract`, `PluginDescriptor` and the
 reusable signature-protected `PluginBootstrapProvider`. It does not depend on Base or any camera,
 transport, protocol or UI implementation.
@@ -32,7 +32,7 @@ dependencyResolutionManagement {
 ```kotlin
 // plugin application build.gradle.kts
 dependencies {
-    implementation("dev.konraditurbe.osmodule:plugin-sdk:1.1.0")
+    implementation("dev.pillar.osmodule:plugin-sdk:1.3.0")
 }
 ```
 
@@ -58,9 +58,13 @@ for runtime-state and permission-management examples.
 
 The Maven version and Binder protocol version are separate:
 
-SDK 1.1.0 adds the Pocket 4P official package/plugin identities, its remote-panel capability and the
-optional camera-model request key. These are additive Bundle constants, so the Binder protocol stays
-at version 1 and existing compatible plugins remain valid.
+SDK 1.3.0 adds an optional camera `Network` request key. Base can retain its camera-AP request and
+lend that network handle to the Pocket remote, which falls back to its own Wi-Fi join when the key is
+absent or unusable. SDK 1.2.0 added the optional panorama source-kind request key used to distinguish
+a legacy dual-fisheye video proxy from a stitched equirectangular photo. SDK 1.1.0 added the Pocket 4P
+identities and remote-panel keys. These are additive Bundle constants, so the Binder protocol stays
+at version 1. Plugins must nevertheless be rebuilt against the `dev.pillar.osmodule` SDK namespace;
+APKs built against the former Osmosis namespace are not binary-compatible with this Base app.
 
 - Patch/minor SDK releases may add optional keys, constants or helpers without changing protocol 1.
 - Removing or changing an AIDL method, key meaning or required value needs a new Binder protocol.

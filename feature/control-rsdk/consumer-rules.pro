@@ -1,2 +1,2 @@
 # Instantiated from merged AndroidManifest metadata by ModuleRegistry.
--keep class dev.konraditurbe.osmosis.rsdk.RsdkControlModule { public <init>(); }
+-keep class dev.pillar.osmodule.rsdk.RsdkControlModule { public <init>(); }

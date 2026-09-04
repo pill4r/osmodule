@@ -4,11 +4,11 @@ plugins {
     id 'maven-publish'
 }
 
-group = 'dev.konraditurbe.osmodule'
+group = 'dev.pillar.osmodule'
 version = rootProject.pluginSdkVersion
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.plugin'
+    namespace = 'dev.pillar.osmodule.plugin'
     compileSdk = 36
 
     defaultConfig { minSdk = 29 }

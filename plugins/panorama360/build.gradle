@@ -14,15 +14,15 @@ if (releaseStoreFile != null && !releaseStoreFile.exists()) {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.plugin.panorama360'
+    namespace = 'dev.pillar.osmodule.plugin.panorama360'
     compileSdk = 36
 
     defaultConfig {
-        applicationId = 'dev.konraditurbe.osmosis.plugin.panorama360'
+        applicationId = 'dev.pillar.osmodule.plugin.panorama360'
         minSdk = 29
         targetSdk = 36
-        versionCode = 2
-        versionName = '1.1.0'
+        versionCode = 3
+        versionName = '1.2.0'
     }
 
     signingConfigs {
@@ -58,7 +58,7 @@ android {
 }
 
 dependencies {
-    implementation "dev.konraditurbe.osmodule:plugin-sdk:${rootProject.pluginSdkVersion}"
+    implementation "dev.pillar.osmodule:plugin-sdk:${rootProject.pluginSdkVersion}"
     implementation project(':feature:panorama360')
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.10.0'

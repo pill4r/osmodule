@@ -9,7 +9,7 @@
 
 osmodule 是一个独立的 Android 客户端，用于浏览、预览和下载 DJI Osmo 相机中的素材。它不依赖 DJI SDK，自身没有账号系统、数据分析或云端上传功能。全新相机仍需先在 DJI Mimo 中完成一次激活，osmodule 才能连接。
 
-本项目派生自开源项目 [Osmosis](https://github.com/KonradIT/osmosis)，但作为独立应用维护和发布。为保持插件 ABI 兼容性，项目继续使用原有 Android 包命名空间 `dev.konraditurbe.osmosis`；产品名称、发布产物和面向用户的存储目录均使用 osmodule。
+本项目派生自开源项目 [Osmosis](https://github.com/KonradIT/osmosis)，但作为独立应用维护和发布。Base 应用及其官方插件统一使用项目自有的 Android 包命名空间 `dev.pillar.osmodule`；产品名称、发布产物和面向用户的存储目录也均使用 osmodule。
 
 ## 为什么要做 osmodule？
 
@@ -27,7 +27,8 @@ osmodule 遵循三条原则：
 
 - 通过低功耗蓝牙发现相机并完成配对。
 - 素材网格、缩略图和低分辨率流式预览。
-- 可独立安装的 Osmo 360 交互式全景视频查看器，支持拖动视角和双指缩放；原始 OSV 视频会自动使用配对的 LRF 代理流打开。
+- 可独立安装的 Osmo 360 交互式全景照片与视频查看器，支持横竖屏切换、拖动视角和双指缩放；
+  已拼接的 2:1 JPEG 和原始 OSV 视频会自动打开，其中 OSV 使用配对的 LRF 代理流播放。
 - 将高分辨率素材断点续传至用户选择的视频目录，默认使用 `Movies/osmodule`、`Pictures/osmodule` 和 `Download/osmodule`。
 - 设置入点和出点，并通过无损流复制完成裁剪。
 - 显示相机连接、电量和存储状态。
@@ -62,7 +63,7 @@ Debug APK 必须来自同一次 CI：先安装 `app-debug.apk`，再通过“选
 3. 打开相机，并在相机列表中选择它。
 4. 在相机上确认配对，然后允许 Android 加入相机 Wi-Fi。
 5. 打开“模块”，为当前连接的相机按需安装可选插件。
-6. 浏览、预览或下载素材。安装查看器插件后，Osmo 360 的 OSV 视频会在其中打开。
+6. 浏览、预览或下载素材。安装查看器插件后，Osmo 360 的全景 JPEG 与 OSV 视频会在其中打开。
 
 ## 隐私
 

@@ -117,9 +117,7 @@
     <string name="gps_active_select_blocked">La sincronización GPS está activa: usa el botón GPS para detenerla antes de seleccionar una cámara.</string>
     <string name="gps_stop_before_browse">Detén la sincronización GPS antes de explorar el contenido.</string>
     <string name="camera_session_busy">Otro módulo de cámara está usando la conexión. Deténlo antes de explorar el contenido.</string>
-    <string name="external_module_camera_busy">%1$s está usando %2$s. Detén ese módulo antes de explorar el contenido.</string>
-    <string name="external_module_check_failed">No se pudo verificar el uso de la cámara por parte del complemento: %1$s</string>
-    <string name="external_module_unknown">Otro módulo</string>
+    <string name="external_module_check_failed">No se pudo reservar la conexión de la cámara: %1$s</string>
 
     <!-- GPS sync notification -->
     <string name="notif_channel_gps">Sincronización GPS</string>

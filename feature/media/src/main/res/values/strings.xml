@@ -123,9 +123,7 @@
     <string name="gps_active_select_blocked">GPS sync is active — use the GPS button to stop before selecting a camera.</string>
     <string name="gps_stop_before_browse">Stop GPS sync before browsing media.</string>
     <string name="camera_session_busy">Another camera module is using the connection. Stop it before browsing media.</string>
-    <string name="external_module_camera_busy">%1$s is using %2$s. Stop that module before browsing media.</string>
-    <string name="external_module_check_failed">Could not verify plugin camera ownership: %1$s</string>
-    <string name="external_module_unknown">Another module</string>
+    <string name="external_module_check_failed">Could not reserve the camera connection: %1$s</string>
 
     <!-- GPS sync notification -->
     <string name="notif_channel_gps">GPS sync</string>
@@ -157,6 +155,9 @@
     <string name="no_media_found">%1$s has no media on it</string>
     <string name="empty_gallery_title">No media here yet</string>
     <string name="empty_gallery_message">Try another filter, or capture something and reconnect to refresh the library.</string>
+    <string name="gallery_syncing_title">Syncing camera media</string>
+    <string name="gallery_syncing_message">The camera Wi-Fi is still connected. Updating the media list in the background…</string>
+    <string name="gallery_refresh_failed">Couldn’t refresh the camera media list. Showing the last synced gallery.</string>
     <string name="camera_not_activated_title">%1$s is a brand new camera, not activated</string>
     <string name="camera_not_activated_message">Activate it once in DJI Mimo. Unfortunately this step is mandatory, then you can delete Mimo.</string>
 

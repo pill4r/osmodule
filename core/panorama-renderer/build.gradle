@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.panorama.render'
+    namespace = 'dev.pillar.osmodule.panorama.render'
     compileSdk = 36
 
     defaultConfig { minSdk = 29 }

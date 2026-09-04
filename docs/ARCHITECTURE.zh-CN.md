@@ -9,7 +9,7 @@ osmodule 由一个精简的 Base APK 和三个可选的官方插件 APK 组成�
 ## APK 与模块关系
 
 ```text
-Base — dev.konraditurbe.osmosis
+Base — dev.pillar.osmodule
   :app
     ├─ :core:module-api
     ├─ :core:plugin-api                 AIDL 客户端协议
@@ -19,23 +19,23 @@ Base — dev.konraditurbe.osmosis
          ├─ :protocol:duml
          └─ :core:camera-session
 
-360° 查看器 — dev.konraditurbe.osmosis.plugin.panorama360
+360° 查看器 — dev.pillar.osmodule.plugin.panorama360
   :plugins:panorama360
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
+    ├─ dev.pillar.osmodule:plugin-sdk:1.3.0
     └─ :feature:panorama360
          └─ :core:panorama-renderer
 
-Osmo 360 遥控（R-SDK）— dev.konraditurbe.osmosis.plugin.rsdk
+Osmo 360 遥控（R-SDK）— dev.pillar.osmodule.plugin.rsdk
   :plugins:rsdk
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
+    ├─ dev.pillar.osmodule:plugin-sdk:1.3.0
     └─ :feature:control-rsdk
          ├─ :protocol:rsdk
          ├─ :transport:ble
          └─ :core:camera-session
 
-Pocket 4P 遥控 — dev.konraditurbe.osmosis.plugin.pocket4p
+Pocket 4P 遥控 — dev.pillar.osmodule.plugin.pocket4p
   :plugins:pocket4p
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
+    ├─ dev.pillar.osmodule:plugin-sdk:1.3.0
     └─ :feature:control-pocket4p
          ├─ :core:common
          ├─ :core:module-api
@@ -51,7 +51,7 @@ APK 或 Base 运行时的依赖。
 
 ## 运行时边界
 
-所有插件都暴露 `dev.konraditurbe.osmosis.plugin.BIND`。协议 v1 刻意只保留四个调用：
+所有插件都暴露 `dev.pillar.osmodule.plugin.BIND`。协议 v1 刻意只保留四个调用：
 
 - `getProtocolVersion()` 选择通信协议；
 - `getDescriptor()` 返回身份、版本、协议范围和能力；
@@ -65,6 +65,10 @@ PendingIntent 是界面启动令牌。每个插件还提供受签名权限保护
 Base 打开 360° 视频时，只传递标题、Osmo 型号键、本地预览 URL，以及已经连接到相机的
 Android `Network`。查看器把自身进程绑定到该网络进行播放，并在关闭时恢复原进程网络。
 Base 不再打包查看器 Activity。
+
+Pocket 4P 远控交接复用同一个可选 `Network`：Base 保持 `WifiNetworkSpecifier` 请求，只关闭
+素材协议会话，并把网络句柄借给插件；返回后重新取得相机会话所有权并恢复素材协议，无需让
+Android 再次加入 Wi-Fi。素材与远控的 DUML 会话仍保持互斥。
 
 ## 仅官方插件的信任策略
 
@@ -83,10 +87,10 @@ osmodule 官方构建有意只接受官方插件。自动发现或用户本地�
 
 ## 相机会话所有权
 
-`core:camera-session` 是每个 APK 内部传输层共用的进程内锁。Base 在打开素材传输前，还会
-查询声明 `camera.session.owner` 的插件。Osmo 360 遥控和 GPS 在插件进程中共享一个 R-SDK
-会话中心；Pocket 4P 遥控则通过相同的跨进程所有权协议报告 DUML 会话。身份和所有权查询
-遇到 Binder 错误时采取失败关闭。
+`core:camera-session` 是每个 APK 内部传输层共用的进程内锁。跨进程互斥由 Base 的
+`CameraSessionOwnerProvider` 统一执行：Base 素材传输、Osmo 360 遥控/GPS 和 Pocket 4P 遥控
+都会在启动相机传输前申请同一把原子租约。进入相册不会查询或唤醒无关插件进程；所有权申请
+遇到 Provider 错误时采取失败关闭。
 
 ## 构建产物
 

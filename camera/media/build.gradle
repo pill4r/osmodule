@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.camera.media'
+    namespace = 'dev.pillar.osmodule.camera.media'
     compileSdk = 36
 
     defaultConfig { minSdk = 29 }

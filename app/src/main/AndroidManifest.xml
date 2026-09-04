@@ -2,31 +2,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <permission
-        android:name="dev.konraditurbe.osmosis.permission.BIND_PLUGIN"
+        android:name="dev.pillar.osmodule.permission.BIND_PLUGIN"
         android:protectionLevel="signature" />
     <permission
-        android:name="dev.konraditurbe.osmosis.permission.CAMERA_SESSION"
+        android:name="dev.pillar.osmodule.permission.CAMERA_SESSION"
         android:protectionLevel="signature" />
 
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="dev.konraditurbe.osmosis.permission.BIND_PLUGIN" />
-    <uses-permission android:name="dev.konraditurbe.osmosis.permission.CAMERA_SESSION" />
+    <uses-permission android:name="dev.pillar.osmodule.permission.BIND_PLUGIN" />
+    <uses-permission android:name="dev.pillar.osmodule.permission.CAMERA_SESSION" />
 
     <queries>
-        <package android:name="dev.konraditurbe.osmosis.plugin.rsdk" />
-        <package android:name="dev.konraditurbe.osmosis.plugin.panorama360" />
-        <package android:name="dev.konraditurbe.osmosis.plugin.pocket4p" />
+        <package android:name="dev.pillar.osmodule.plugin.rsdk" />
+        <package android:name="dev.pillar.osmodule.plugin.panorama360" />
+        <package android:name="dev.pillar.osmodule.plugin.pocket4p" />
         <intent>
-            <action android:name="dev.konraditurbe.osmosis.plugin.BIND" />
+            <action android:name="dev.pillar.osmodule.plugin.BIND" />
         </intent>
         <intent>
-            <action android:name="dev.konraditurbe.osmosis.plugin.MANAGE_PERMISSIONS" />
+            <action android:name="dev.pillar.osmodule.plugin.MANAGE_PERMISSIONS" />
         </intent>
-        <provider android:authorities="dev.konraditurbe.osmosis.plugin.rsdk.bootstrap" />
-        <provider android:authorities="dev.konraditurbe.osmosis.plugin.panorama360.bootstrap" />
-        <provider android:authorities="dev.konraditurbe.osmosis.plugin.pocket4p.bootstrap" />
+        <provider android:authorities="dev.pillar.osmodule.plugin.rsdk.bootstrap" />
+        <provider android:authorities="dev.pillar.osmodule.plugin.panorama360.bootstrap" />
+        <provider android:authorities="dev.pillar.osmodule.plugin.pocket4p.bootstrap" />
     </queries>
 
     <application
@@ -40,11 +40,11 @@
         android:theme="@style/Theme.OsModule">
 
         <provider
-            android:name="dev.konraditurbe.osmosis.modules.CameraSessionOwnerProvider"
-            android:authorities="dev.konraditurbe.osmosis.camera-session"
+            android:name="dev.pillar.osmodule.modules.CameraSessionOwnerProvider"
+            android:authorities="dev.pillar.osmodule.camera-session"
             android:exported="true"
             android:grantUriPermissions="false"
-            android:permission="dev.konraditurbe.osmosis.permission.CAMERA_SESSION" />
+            android:permission="dev.pillar.osmodule.permission.CAMERA_SESSION" />
 
         <activity
             android:name=".plugins.PluginManagerActivity"

@@ -123,9 +123,7 @@
     <string name="gps_active_select_blocked">GPS 同步进行中——请先通过 GPS 按钮停止，再选择相机。</string>
     <string name="gps_stop_before_browse">请先停止 GPS 同步，再浏览媒体。</string>
     <string name="camera_session_busy">另一个相机模块正在使用连接，请先停止它再浏览媒体。</string>
-    <string name="external_module_camera_busy">%1$s 正在使用 %2$s。请先停止该模块，再浏览媒体。</string>
-    <string name="external_module_check_failed">无法确认插件的相机占用状态：%1$s</string>
-    <string name="external_module_unknown">另一个模块</string>
+    <string name="external_module_check_failed">无法预留相机连接：%1$s</string>
 
     <!-- GPS sync notification -->
     <string name="notif_channel_gps">GPS 同步</string>
@@ -157,6 +155,9 @@
     <string name="no_media_found">%1$s 上没有媒体文件</string>
     <string name="empty_gallery_title">这里还没有媒体</string>
     <string name="empty_gallery_message">可尝试切换筛选条件，或拍摄后重新连接以刷新媒体库。</string>
+    <string name="gallery_syncing_title">正在同步相机媒体</string>
+    <string name="gallery_syncing_message">相机 Wi-Fi 仍保持连接，正在后台更新媒体列表…</string>
+    <string name="gallery_refresh_failed">相机媒体列表刷新失败，当前显示上次同步的相册。</string>
     <string name="camera_not_activated_title">%1$s 是一台全新相机，尚未激活</string>
     <string name="camera_not_activated_message">请先在 DJI Mimo 中激活一次。很遗憾，这一步是必须的；激活后即可卸载 Mimo。</string>
 

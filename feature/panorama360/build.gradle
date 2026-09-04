@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.feature.panorama360'
+    namespace = 'dev.pillar.osmodule.feature.panorama360'
     compileSdk = 36
 
     defaultConfig {

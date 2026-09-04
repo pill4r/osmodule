@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = 'dev.konraditurbe.osmosis.core.common'
+    namespace = 'dev.pillar.osmodule.core.common'
     compileSdk = 36
 
     defaultConfig { minSdk = 29 }

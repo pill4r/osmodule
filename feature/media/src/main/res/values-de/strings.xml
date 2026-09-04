@@ -117,9 +117,7 @@
     <string name="gps_active_select_blocked">GPS-Sync ist aktiv – stoppe ihn über die GPS-Schaltfläche, bevor du eine Kamera auswählst.</string>
     <string name="gps_stop_before_browse">Stoppe GPS-Sync, bevor du Medien durchsuchst.</string>
     <string name="camera_session_busy">Ein anderes Kameramodul verwendet die Verbindung. Beende es, bevor du Medien durchsuchst.</string>
-    <string name="external_module_camera_busy">%1$s verwendet %2$s. Beende dieses Modul, bevor du Medien durchsuchst.</string>
-    <string name="external_module_check_failed">Die Kameranutzung durch das Plugin konnte nicht geprüft werden: %1$s</string>
-    <string name="external_module_unknown">Anderes Modul</string>
+    <string name="external_module_check_failed">Die Kameraverbindung konnte nicht reserviert werden: %1$s</string>
 
     <!-- GPS sync notification -->
     <string name="notif_channel_gps">GPS-Sync</string>

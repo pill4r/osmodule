@@ -9,9 +9,9 @@ an open marketplace. The current catalog contains:
 
 | Plugin | Package | Required capability |
 |---|---|---|
-| 360 Viewer | `dev.konraditurbe.osmosis.plugin.panorama360` | `camera.media.360-view` |
-| Osmo 360 RC (R-SDK) | `dev.konraditurbe.osmosis.plugin.rsdk` | `camera.rsdk.remote-panel`, `camera.session.owner` |
-| Pocket 4P RC | `dev.konraditurbe.osmosis.plugin.pocket4p` | `camera.pocket4p.remote-panel`, `camera.session.owner` |
+| 360 Viewer | `dev.pillar.osmodule.plugin.panorama360` | `camera.media.360-view` |
+| Osmo 360 RC (R-SDK) | `dev.pillar.osmodule.plugin.rsdk` | `camera.rsdk.remote-panel`, `camera.session.owner` |
+| Pocket 4P RC | `dev.pillar.osmodule.plugin.pocket4p` | `camera.pocket4p.remote-panel`, `camera.session.owner` |
 
 Base shows only catalog entries in Modules and rejects an installed or selected APK when its package,
 plugin ID or capability set falls outside that catalog. Matching the signing key alone is insufficient.
