@@ -73,6 +73,14 @@
                 app:icon="@drawable/ic_modules"
                 app:iconTint="@color/osmo_ink"
                 tools:visibility="visible" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAbout"
+                style="@style/OsmoIconButton"
+                android:layout_marginStart="8dp"
+                android:contentDescription="@string/about"
+                app:icon="@drawable/ic_info"
+                app:iconTint="@color/osmo_ink" />
         </LinearLayout>
 
         <!-- GPS-sync owns the camera BLE link while active. -->

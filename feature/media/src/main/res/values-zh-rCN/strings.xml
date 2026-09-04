@@ -11,6 +11,34 @@
     <string name="stop">停止</string>
     <string name="retry">重试</string>
 
+    <!-- 关于与开源项目 -->
+    <string name="about">关于</string>
+    <string name="about_back">← 返回</string>
+    <string name="about_title">关于 osmodule</string>
+    <string name="about_version">版本 %1$s</string>
+    <string name="about_intro">一个精简、模块化的 Android 客户端，用于通过相机本地网络浏览、传输素材并控制已支持的 DJI Osmo 相机。</string>
+    <string name="about_open_source_title">开源项目与参考资料</string>
+    <string name="about_open_source_intro">以下是 osmodule 明确使用的上游实现与协议研究。页面会区分“改编实现”和“研究参考”；点按项目即可打开其上游页面。</string>
+    <string name="about_relationship_inherited_mit">继承实现 · MIT</string>
+    <string name="about_relationship_adapted_mit">改编实现 · MIT</string>
+    <string name="about_relationship_adapted_apache">改编实现 · Apache-2.0</string>
+    <string name="about_relationship_research">协议研究参考 · 适用上游条款</string>
+    <string name="about_relationship_dji_sample">移植并修改 · 示例代码 MIT；协议适用 DJI EULA</string>
+    <string name="about_project_osmosis">osmodule 派生自该 Android 应用，并继承其基础实现。</string>
+    <string name="about_project_open_pocket_cine">Pocket 4P 的 DUML 路由、命令载荷、状态解释与 HEVC 实时预览行为。</string>
+    <string name="about_project_osmo360">Osmo 360 的 UDP/TCP 实时预览握手与 AVC 分帧。</string>
+    <string name="about_project_panoforge">Osmo 360 出厂标定元数据解析与标定投影研究。</string>
+    <string name="about_project_ogs">DJI 相机逆向协议研究。</string>
+    <string name="about_project_dji_remote">引入或改编的 DUML 帧格式、CRC、字节读写器与部分命令载荷。</string>
+    <string name="about_project_osmo_download">Osmo 素材发现与下载协议研究。</string>
+    <string name="about_project_wifi_connect">DJI 相机 Wi-Fi 连接与配对研究。</string>
+    <string name="about_project_osmo_ble">DJI Osmo 低功耗蓝牙协议研究。</string>
+    <string name="about_project_gps_demo">移植自 DJI 示例的 R-SDK 帧格式、CRC、BLE 会话、命令、GPS 推送与状态处理。</string>
+    <string name="about_project_link_description">打开 %1$s 上游项目页面</string>
+    <string name="about_full_notices">在 GitHub 查看完整第三方声明</string>
+    <string name="about_open_link_failed">没有可用于打开此链接的应用。</string>
+    <string name="about_legal">osmodule 自有代码及继承自 Osmosis 的基础采用 MIT 许可证；改编和第三方部分适用上方列出的各自条款。osmodule 是独立项目，与 DJI 没有关联，也未获得 DJI 的授权或认可。DJI 和 Osmo 是其各自权利人的商标。</string>
+
     <!-- Camera selector -->
     <string name="cameras">相机</string>
     <string name="cameras_subtitle">连接、浏览与传输</string>
@@ -19,7 +47,7 @@
     <string name="camera_offline">离线</string>
     <string name="camera_row_description">%1$s，%2$s，%3$s</string>
     <string name="camera_beta_name">%1$s · 测试机型</string>
-    <string name="remote_control_mode">控制当前连接的 Osmo 360</string>
+    <string name="remote_control_mode">控制当前连接的相机</string>
     <string name="open_remote_control">远控</string>
     <string name="install_remote_control">安装远控</string>
     <string name="remote_control_reconnecting">正在切换连接并打开远控…</string>
@@ -27,6 +55,8 @@
     <string name="remote_plugin_install_hint">请在“模块管理”中安装或更新远控模块。</string>
     <string name="manage_modules">管理模块</string>
     <string name="device_modules_button">模块</string>
+    <string name="camera_gallery_action">查看相册</string>
+    <string name="camera_installed_modules">已安装：%1$s</string>
     <string name="device_modules_title">%1$s 支持的模块</string>
     <string name="device_modules_intro">以下是这台设备支持的模块及当前安装状态。</string>
     <string name="device_modules_empty">暂时没有为这台设备列出的模块。</string>
@@ -45,11 +75,11 @@
     <string name="video_folder_reset_done">视频将保存到 Movies/osmodule。</string>
     <string name="rescan">重新扫描</string>
     <string name="scanning">正在扫描…</string>
-    <string name="no_cameras_hint">还没有相机——请开启相机，然后点按“重新扫描”。</string>
+    <string name="no_cameras_hint">还没有相机——请开启相机，稍后会自动显示。</string>
     <string name="cameras_in_range">%1$d/%2$d 台已保存相机在范围内 · %3$d 台新设备</string>
     <string name="new_tag">新设备</string>
     <string name="no_bluetooth">此设备没有蓝牙功能。</string>
-    <string name="camera_not_in_range">%1$s 不在范围内——请开启相机后重新扫描</string>
+    <string name="camera_not_in_range">%1$s 不在范围内——请开启相机并稍候</string>
 
     <!-- Bluetooth off dialog -->
     <string name="bluetooth_off_title">蓝牙已关闭</string>
@@ -193,7 +223,7 @@
     <string name="cant_play_clip">无法播放此片段（%1$d/%2$d）</string>
     <string name="preview_unavailable">预览不可用</string>
     <string name="open_360_viewer">打开交互式 360° 全景</string>
-    <string name="module_not_for_camera">此模块目前只支持 Osmo 360。</string>
+    <string name="module_not_for_camera">当前相机暂无可用的遥控模块。</string>
     <string name="pause_then_set_start">请先暂停，再设置起点</string>
     <string name="pause_then_set_end">请先暂停，再设置终点</string>
     <string name="set_start_first">请先设置起点 [</string>

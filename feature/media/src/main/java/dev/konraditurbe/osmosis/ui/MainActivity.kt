@@ -58,8 +58,13 @@ import dev.konraditurbe.osmosis.modules.CameraExclusiveState
 import dev.konraditurbe.osmosis.modules.CameraRemotePanelLauncher
 import dev.konraditurbe.osmosis.modules.CameraRemoteTarget
 import dev.konraditurbe.osmosis.modules.CameraSessionGate
+import dev.konraditurbe.osmosis.modules.CameraSessionOwnerAcquire
+import dev.konraditurbe.osmosis.modules.CameraSessionOwnerClient
+import dev.konraditurbe.osmosis.modules.CameraSessionOwnerLease
+import dev.konraditurbe.osmosis.modules.CameraSessionOwnerResult
 import dev.konraditurbe.osmosis.modules.ModuleRegistry
 import dev.konraditurbe.osmosis.modules.ModuleManagementLauncher
+import dev.konraditurbe.osmosis.modules.ModuleInstallationState
 import dev.konraditurbe.osmosis.modules.DeviceModels
 import dev.konraditurbe.osmosis.panorama.render.DjmdCalibrationLoader
 import dev.konraditurbe.osmosis.panorama.render.PanoramaCalibrationCodec
@@ -99,6 +104,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     private lateinit var btnRemote: MaterialButton
     private lateinit var btnVideoFolder: MaterialButton
     private lateinit var btnModules: MaterialButton
+    private lateinit var btnAbout: MaterialButton
     private lateinit var gpsBanner: TextView
     private var pendingGpsTarget: Pair<String, String>? = null // (mac, name) awaiting location perms
 
@@ -122,6 +128,8 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     private var camRows: List<CamRow> = emptyList()
     private var currentStatus = CameraStatus()
     private var returnToSelectorAfterRemote = false
+    /** Card Remote waits for Base to obtain the camera's Wi-Fi credentials, then launches the plugin. */
+    private var pendingCardRemoteAddress: String? = null
     private val main = Handler(Looper.getMainLooper())
 
     private val videoFolderPicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -135,11 +143,21 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
     private var btAdapter: BluetoothAdapter? = null
     private var scanner: OsmoScanner? = null
+    private var cameraPolling = false
+    private var activityStarted = false
+    private var cameraScanGeneration = 0L
+    private val cameraPoll = Runnable {
+        if (shouldPollCameras()) startCameraScan(select = true, promptIfUnavailable = false)
+    }
     private var gattClient: GattClient? = null
     private var cameraSessionLease: CameraSessionLease? = null
+    private var cameraSessionOwnerLease: CameraSessionOwnerLease? = null
+    private var cameraSessionOwnerAcquire: CameraSessionOwnerAcquire? = null
+    private var cameraSessionOwnerGeneration = 0L
     private var apJoiner: ApJoiner? = null
     private var connecting = false
     private var externalGateCheckInFlight = false
+    private var externalGateGeneration = 0L
 
     // ---- download / AP-loss state (all main-thread confined) ----------------
     // One download run at a time. Without this every tap on Download spawned another thread over the
@@ -152,9 +170,11 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     private var datalinkStarted = false
     private var wifiRejoins = 0
     private var resumeDownloadOnRejoin = false
+    /** Invalidates queued ConnectivityManager callbacks from a released/replaced AP request. */
+    private var wifiFlowGeneration = 0L
 
     /**
-     * Generation stamp for the datalink worker, bumped on every start and every teardown.
+     * Generation stamp and pending/active publication gate for the datalink worker.
      *
      * [startDatalink] does its work on a thread, and the slow part — `fetchFileList`, 10-20 s — runs
      * before the session is ever assigned to [datalink]. So a reconnect during that window could not
@@ -164,13 +184,13 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
      * attempts got zero `0x00/0x27` frames while the camera pushed 1000+ of everything else — the
      * query was reaching a camera whose session we had already replaced underneath it.
      *
-     * A worker compares this on completion and drops its result if it has been superseded. Atomic
-     * because it is touched from the main thread and the ConnectivityManager callback.
+     * Publication and teardown use one lock inside [GenerationResourceSlot]. This matters beyond a
+     * simple generation check: teardown may run before a worker has assigned its newly-created session,
+     * and a check followed by an unlocked assignment leaves another gap at final promotion.
      */
-    private val datalinkGen = java.util.concurrent.atomic.AtomicInteger(0)
-
-    /** The session a worker is building. Published *before* the fetch so teardown can close it. */
-    @Volatile private var pendingSession: dev.konraditurbe.osmosis.core.MediaSession? = null
+    private val datalinkSessions = GenerationResourceSlot<MediaSession> { session ->
+        runCatching { session.close() }
+    }
 
     private val http = HttpClient("192.168.2.1") { s -> logLine(s) }
     private var imageLoader: ImageLoader? = null
@@ -180,6 +200,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     private var remoteCalibrationData: FloatArray? = null
     private var remoteCalibrationLoadGeneration = 0
     private var remoteLaunchPending = false
+    private var remoteLaunchGeneration = 0L
 
     // Preview screen result: add/remove the previewed item (with optional trim) from the queue.
     private val previewLauncher = registerForActivityResult(
@@ -219,7 +240,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
     // The datalink session keeps the camera AP alive (the Action 5 sleeps its AP the moment the
     // datalink goes idle). Held open during browse/download; closed on a new offload / exit.
-    private var datalink: MediaSession? = null
+    private val datalink: MediaSession? get() = datalinkSessions.active()
 
     // EVERY camera write goes through this one worker. They can each fall back to tearing the keep-alive
     // down and re-handshaking, so two running at once fight over the socket. Observed on an Xtra Edge Pro:
@@ -352,7 +373,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         connectBar = findViewById(R.id.connectBar)
         statusPill = findViewById(R.id.statusPill)
         savedCameras = SavedCameras(getSharedPreferences("osmosis", MODE_PRIVATE))
-        findViewById<View>(R.id.btnRescan).setOnClickListener { startCameraScan(select = true) }
+        findViewById<View>(R.id.btnRescan).setOnClickListener { startCameraPolling() }
         findViewById<View>(R.id.btnBackToCameras).setOnClickListener { switchToSelector() }
         cameraList.setOnItemClickListener { _, _, pos, _ -> onCamRowClick(pos) }
         cameraList.setOnItemLongClickListener { _, _, pos, _ -> onCamRowLongClick(pos) }
@@ -367,11 +388,13 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         btnRemote = findViewById(R.id.btnRemote)
         btnVideoFolder = findViewById(R.id.btnVideoFolder)
         btnModules = findViewById(R.id.btnModules)
+        btnAbout = findViewById(R.id.btnAbout)
         gpsBanner = findViewById(R.id.gpsBanner)
         btnGps.visibility = if (cameraModeController == null) View.GONE else View.VISIBLE
         btnRemote.visibility = View.GONE
         btnModules.visibility = if (moduleManagementLauncher == null) View.GONE else View.VISIBLE
         btnModules.setOnClickListener { moduleManagementLauncher?.open(this) }
+        btnAbout.setOnClickListener { startActivity(Intent(this, AboutActivity::class.java)) }
         btnVideoFolder.setOnClickListener { showVideoFolderSettings() }
         btnRemote.setOnClickListener { openRemoteForConnectedCamera() }
         btnGps.isChecked = cameraModeController != null && prefs.getBoolean("gps_mode", false)
@@ -397,10 +420,8 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         // it's powered on and advertising, so scan and auto-connect to that MAC — same path as a tap.
         val shortcutMac = intent?.getStringExtra(CameraShortcuts.EXTRA_MAC)
         if (shortcutMac != null) { autoPickMac = shortcutMac; logLine("shortcut: connect to $shortcutMac") }
-        when {
-            shortcutMac != null -> main.postDelayed({ startCameraScan(select = true) }, 300)
-            else -> startCameraScan(select = true)
-        }
+        // onResume starts the selector's foreground-only polling loop. A shortcut uses the same loop
+        // and is consumed as soon as its target advertises.
     }
 
     private fun showVideoFolderSettings() {
@@ -470,40 +491,47 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         teardownOffload()
         switchToSelector()
         autoPickMac = mac
-        startCameraScan(select = true)
+        startCameraPolling()
     }
 
     override fun onDestroy() {
+        // Includes a generation-linearized close of a session still blocked in fetchFileList().
+        teardownOffload()
         super.onDestroy()
-        stopKeepalive()
-        datalink?.close()
         scanner?.stop()
-        gattClient?.disconnect()
-        gattClient?.close()
-        cameraSessionLease?.close(); cameraSessionLease = null
-        apJoiner?.release()
         imageLoader?.shutdown()
         metaLoader?.shutdown()
     }
 
     override fun onStart() {
         super.onStart()
+        activityStarted = true
         cameraModeController?.addListener(cameraModeStateListener)
     }
 
     override fun onResume() {
         super.onResume()
         if (::btnRemote.isInitialized) {
-            val installed = remotePanelLauncher?.isAvailable(this) == true
+            val installed = remotePanelLauncher?.isAvailable(this, currentModel.moduleKey) == true
             btnRemote.setText(if (installed) R.string.open_remote_control else R.string.install_remote_control)
         }
         if (returnToSelectorAfterRemote && ::selectorGroup.isInitialized) {
             returnToSelectorAfterRemote = false
             switchToSelector()
+        } else if (::selectorGroup.isInitialized && selectorGroup.visibility == View.VISIBLE) {
+            // Module installation can change while the manager is on top of us; refresh badges/buttons.
+            rebuildCameraList()
+            startCameraPolling()
         }
     }
 
     override fun onStop() {
+        // A gate/bootstrap may still be running after the user backgrounds Base. Do not let its
+        // late callback reconnect a camera or raise plugin UI over another app.
+        activityStarted = false
+        stopCameraPolling()
+        pendingCardRemoteAddress = null
+        invalidatePendingCameraActions()
         super.onStop()
         cameraModeController?.removeListener(cameraModeStateListener)
     }
@@ -567,37 +595,98 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         btnRemote.isEnabled = !state.locked
         btnRemote.alpha = if (state.locked) 0.4f else 1f
         if (state.locked && !btnGps.isChecked) btnGps.isChecked = true
+        if (state.locked) {
+            stopCameraPolling()
+        } else if (activityStarted && selectorGroup.visibility == View.VISIBLE) {
+            startCameraPolling(promptIfUnavailable = false)
+        }
     }
 
     // ---- Scan / permissions -------------------------------------------------
 
     private data class Cam(val device: BluetoothDevice, val name: String?, val brand: Brand, val rssi: Int, val modelId: Int?, val model: CameraModel)
     private val discovered = LinkedHashMap<String, Cam>()
+    private var currentScanHits = LinkedHashMap<String, Cam>()
     private var autoPick: String? = null
     // MAC of a camera launched from a launcher App Shortcut: connect the moment it advertises, no tap
     // (see CameraShortcuts / onHit). Cleared once consumed.
     private var autoPickMac: String? = null
 
-    /** Scan ~4s for DJI/Xtra cameras (bonds aren't reliable for these), then feed the selector list. */
-    private fun startCameraScan(select: Boolean, pick: String? = null) {
-        val adapter = btAdapter ?: run { logLine("No Bluetooth adapter."); toast(getString(R.string.no_bluetooth)); return }
-        if (!adapter.isEnabled) { promptEnableBluetooth(select, pick); return }
+    /**
+     * Keep scanning in short bursts while the selector is visible. A burst is deliberately followed by
+     * an idle interval: it discovers a camera within a few seconds without holding Android's low-latency
+     * BLE scanner continuously. The last completed result remains visible during the next burst, which
+     * prevents every saved camera from flashing offline whenever a new poll starts.
+     */
+    private fun startCameraPolling(promptIfUnavailable: Boolean = true) {
+        cameraPolling = true
+        main.removeCallbacks(cameraPoll)
+        if (scanner?.isScanning() == true) return
+        startCameraScan(select = true, promptIfUnavailable = promptIfUnavailable)
+    }
+
+    private fun stopCameraPolling() {
+        cameraPolling = false
+        cameraScanGeneration++
+        main.removeCallbacks(cameraPoll)
+        scanner?.stop()
+        scanner = null
+        currentScanHits.clear()
+    }
+
+    private fun shouldPollCameras(): Boolean =
+        cameraPolling && activityStarted && ::selectorGroup.isInitialized &&
+            selectorGroup.visibility == View.VISIBLE && !connecting && !externalGateCheckInFlight &&
+            cameraModeController?.state?.locked != true && !isFinishing && !isDestroyed
+
+    private fun scheduleNextCameraScan() {
+        main.removeCallbacks(cameraPoll)
+        if (shouldPollCameras()) main.postDelayed(cameraPoll, CAMERA_SCAN_POLL_DELAY_MS)
+    }
+
+    /** Scan one burst for DJI/Xtra cameras, then publish the complete online/offline snapshot. */
+    private fun startCameraScan(
+        select: Boolean,
+        pick: String? = null,
+        promptIfUnavailable: Boolean = true,
+    ) {
+        if (!shouldPollCameras()) return
+        val adapter = btAdapter ?: run {
+            logLine("No Bluetooth adapter.")
+            if (promptIfUnavailable) toast(getString(R.string.no_bluetooth))
+            scheduleNextCameraScan()
+            return
+        }
+        if (!adapter.isEnabled) {
+            if (promptIfUnavailable) promptEnableBluetooth(select, pick) else scheduleNextCameraScan()
+            return
+        }
         val missing = requiredPerms().filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQ_PERMS)
+            if (promptIfUnavailable) {
+                ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQ_PERMS)
+            } else {
+                scheduleNextCameraScan()
+            }
             return
         }
         autoPick = pick
-        discovered.clear()
-        connecting = false
+        currentScanHits = LinkedHashMap()
+        val generation = ++cameraScanGeneration
+        val s = OsmoScanner(adapter, this)
+        scanner = s
+        s.start()
         selectorHint.text = getString(R.string.scanning)
         rebuildCameraList()
-        val s = OsmoScanner(adapter, this); scanner = s; s.start()
         main.postDelayed({
+            if (generation != cameraScanGeneration) return@postDelayed
             s.stop()
-            if (connecting) return@postDelayed // auto-pick already connected
+            scanner = null
+            if (connecting || !cameraPolling) return@postDelayed // auto-pick already connected
+            discovered.clear()
+            discovered.putAll(currentScanHits)
             rebuildCameraList()
             // Test-hook auto-pick (`--es pick <name|brand>`) connects without a tap.
             autoPick?.let { pk ->
@@ -605,7 +694,8 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
                     (it.name ?: "").contains(pk, true) || it.brand.name.equals(pk, true)
                 }?.let { onCameraChosen(it.device) }
             }
-        }, 4000)
+            scheduleNextCameraScan()
+        }, CAMERA_SCAN_DURATION_MS)
     }
 
     /** Bluetooth is off — scanning would silently find nothing, so ask the user to turn it on and resume
@@ -643,9 +733,30 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         val newRows = scanned.filter { it.device.address !in savedMacs }.map { c ->
             CamRow(c.device.address, c.name, c.model, inRange = true, saved = false, device = c.device)
         }
-        camRows = savedRows + newRows
+        val baseRows = savedRows + newRows
+        val manager = moduleManagementLauncher
+        val modulesByModel = baseRows
+            .map { it.model.moduleKey }
+            .distinct()
+            .associateWith { model -> manager?.modulesForDevice(this, model).orEmpty() }
+        camRows = baseRows.map { row ->
+            row.copy(
+                installedModuleNames = modulesByModel[row.model.moduleKey]
+                    .orEmpty()
+                    .filter { it.installationState == ModuleInstallationState.INSTALLED }
+                    .map { it.name },
+                remoteSupported = row.model.moduleKey in REMOTE_CONTROL_MODELS,
+                remoteInstalled = remotePanelLauncher?.isAvailable(this, row.model.moduleKey) == true,
+            )
+        }
         val modulesClick = if (moduleManagementLauncher == null) null else ::showModulesForCamera
-        cameraList.adapter = CameraListAdapter(camRows, modulesClick)
+        val remoteClick = if (remotePanelLauncher == null) null else ::onCameraRemoteClick
+        cameraList.adapter = CameraListAdapter(
+            rows = camRows,
+            onGalleryClick = ::onCameraGalleryClick,
+            onRemoteClick = remoteClick,
+            onModulesClick = modulesClick,
+        )
         if (scanner?.isScanning() != true) {
             selectorHint.text = if (camRows.isEmpty()) getString(R.string.no_cameras_hint)
             else getString(R.string.cameras_in_range, savedRows.count { it.inRange }, savedRows.size, newRows.size)
@@ -662,59 +773,122 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         )
     }
 
+    /** Explicit card action: unlike tapping the row, this always opens media even if GPS mode is armed. */
+    private fun onCameraGalleryClick(camera: CamRow) {
+        pendingCardRemoteAddress = null
+        if (cameraModeController?.state?.locked == true) {
+            toast(getString(R.string.gps_active_select_blocked))
+            return
+        }
+        val device = camera.device
+        if (device != null) onCameraChosen(device)
+        else toast(getString(R.string.camera_not_in_range, camera.name ?: camera.mac))
+    }
+
     /**
-     * Remote control is an action on the connected camera, not a selector mode. R-SDK needs exclusive
-     * ownership of the BLE link, so release the media/Wi-Fi session before handing the same target to
-     * the external module. When its Activity returns, [onResume] takes us back to the camera list rather
-     * than exposing a gallery whose transport has already been closed.
+     * The plugin needs credentials that only arrive during Base's normal pairing flow. Remember the
+     * requested destination, connect exactly as Album does, and consume it from [showGrid].
      */
-    private fun openRemoteForConnectedCamera() {
-        val launcher = remotePanelLauncher ?: return
-        if (currentModel.moduleKey != DeviceModels.OSMO_360) {
+    private fun onCameraRemoteClick(camera: CamRow) {
+        if (camera.model.moduleKey !in REMOTE_CONTROL_MODELS) {
             toast(getString(R.string.module_not_for_camera))
             return
         }
-        if (!launcher.isAvailable(this)) {
+        val launcher = remotePanelLauncher ?: return
+        if (!launcher.isAvailable(this, camera.model.moduleKey)) {
+            pendingCardRemoteAddress = null
             toast(getString(R.string.remote_plugin_install_hint))
             moduleManagementLauncher?.open(this)
             return
         }
+        if (cameraModeController?.state?.locked == true) {
+            toast(getString(R.string.gps_active_select_blocked))
+            return
+        }
+        val device = camera.device
+        if (device == null) {
+            toast(getString(R.string.camera_not_in_range, camera.name ?: camera.mac))
+            return
+        }
+        pendingCardRemoteAddress = camera.mac
+        onCameraChosen(device)
+    }
+
+    /**
+     * Remote control is an action on the connected camera, not a selector mode. A remote plugin needs
+     * exclusive ownership of the camera link, so release the media/Wi-Fi session before handing off
+     * the same target. When its Activity returns, [onResume] takes us back to the camera list rather
+     * than exposing a gallery whose transport has already been closed.
+     */
+    private fun openRemoteForConnectedCamera() {
+        val launcher = remotePanelLauncher ?: return
+        if (currentModel.moduleKey !in REMOTE_CONTROL_MODELS) {
+            toast(getString(R.string.module_not_for_camera))
+            return
+        }
+        if (!launcher.isAvailable(this, currentModel.moduleKey)) {
+            toast(getString(R.string.remote_plugin_install_hint))
+            moduleManagementLauncher?.open(this)
+            return
+        }
+        if (remoteLaunchPending) return
         val address = currentAddress ?: return
-        val calibrationStreams = panoramaCalibrationStreams(adapter?.allFilesSnapshot().orEmpty())
-        val calibrationData = calibrationForAddress(address)
+        val deviceModel = currentModel.moduleKey
+        val requestGeneration = ++remoteLaunchGeneration
+        launcher.cancelPending()
+        returnToSelectorAfterRemote = false
+        val isOsmo360 = currentModel.moduleKey == DeviceModels.OSMO_360
+        val calibrationStreams = if (isOsmo360) {
+            panoramaCalibrationStreams(adapter?.allFilesSnapshot().orEmpty())
+        } else emptyList()
+        val calibrationData = if (isOsmo360) calibrationForAddress(address) else null
         if (calibrationData == null && calibrationStreams.isNotEmpty()) {
-            if (remoteLaunchPending) return
             remoteLaunchPending = true
             logLine("Remote control: reading OSV factory calibration before media handoff " +
                 "(${calibrationStreams.size} candidate(s)).")
             DjmdCalibrationLoader.load(calibrationStreams) { calibration ->
                 main.post {
+                    if (!isRemoteLaunchCurrent(requestGeneration, address, deviceModel)) return@post
                     remoteLaunchPending = false
-                    if (isDestroyed || currentAddress != address ||
-                        currentModel.moduleKey != DeviceModels.OSMO_360
-                    ) return@post
                     val encoded = calibration?.let(PanoramaCalibrationCodec::encode)
                     if (encoded != null) rememberCalibration(address, encoded)
                     else logLine("Remote control: no DJMD factory calibration found before handoff.")
-                    launchRemoteForConnectedCamera(launcher, address, calibrationStreams, encoded)
+                    launchRemoteForConnectedCamera(
+                        launcher,
+                        address,
+                        deviceModel,
+                        calibrationStreams,
+                        encoded,
+                        requestGeneration,
+                    )
                 }
             }
             return
         }
-        launchRemoteForConnectedCamera(launcher, address, calibrationStreams, calibrationData)
+        launchRemoteForConnectedCamera(
+            launcher,
+            address,
+            deviceModel,
+            calibrationStreams,
+            calibrationData,
+            requestGeneration,
+        )
     }
 
     private fun launchRemoteForConnectedCamera(
         launcher: CameraRemotePanelLauncher,
         address: String,
+        deviceModel: String,
         calibrationStreams: List<String>,
         calibrationData: FloatArray?,
+        requestGeneration: Long,
     ) {
+        if (!isRemoteLaunchCurrent(requestGeneration, address, deviceModel)) return
         val target = CameraRemoteTarget(
             address = address,
             name = pillName(),
             inRange = true,
-            deviceModel = currentModel.moduleKey,
+            deviceModel = deviceModel,
             wifiSsid = offloadSsid.takeIf { it.isNotBlank() },
             wifiPassphrase = offloadPass.takeIf { it.isNotBlank() },
             wifiWpa3 = currentModel.wpa3,
@@ -723,20 +897,49 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             panoramaCalibrationStreams = calibrationStreams,
             panoramaCalibrationData = calibrationData,
         )
-        logLine("Remote control: releasing media connection before R-SDK handoff " +
-            "(factory calibration=${if (calibrationData != null) "ready" else "unavailable"}).")
+        val handoffDetail = if (target.deviceModel == DeviceModels.OSMO_360) {
+            "factory calibration=${if (calibrationData != null) "ready" else "unavailable"}"
+        } else {
+            "Pocket DUML"
+        }
+        logLine("Remote control: releasing media connection before plugin handoff ($handoffDetail).")
         teardownOffload()
+        val panelGeneration = ++remoteLaunchGeneration
+        remoteLaunchPending = true
         returnToSelectorAfterRemote = true
-        val opened = launcher.open(this, target)
-        if (opened) {
+        val completionDelivered = java.util.concurrent.atomic.AtomicBoolean(false)
+        val completeLaunch: (Boolean) -> Unit = { opened ->
+            if (completionDelivered.compareAndSet(false, true)) {
+                main.post {
+                    if (!isRemoteLaunchCurrent(panelGeneration, address, deviceModel)) return@post
+                    remoteLaunchGeneration++ // consume this generation; ignore any duplicate/late signal
+                    remoteLaunchPending = false
+                    if (opened) {
+                        returnToSelectorAfterRemote = true
+                    } else {
+                        returnToSelectorAfterRemote = false
+                        switchToSelector()
+                        toast(getString(R.string.remote_panel_unavailable))
+                        moduleManagementLauncher?.open(this)
+                    }
+                }
+            }
+        }
+        val accepted = launcher.open(this, target, completeLaunch)
+        if (accepted) {
             toast(getString(R.string.remote_control_reconnecting))
         } else {
-            returnToSelectorAfterRemote = false
-            switchToSelector()
-            toast(getString(R.string.remote_panel_unavailable))
-            moduleManagementLauncher?.open(this)
+            completeLaunch(false)
         }
     }
+
+    private fun isRemoteLaunchCurrent(
+        generation: Long,
+        address: String,
+        deviceModel: String,
+    ): Boolean = generation == remoteLaunchGeneration &&
+        !isFinishing && !isDestroyed &&
+        currentAddress == address && currentModel.moduleKey == deviceModel
 
     private fun panoramaCalibrationStreams(files: List<CameraFile>): List<String> = files
         .asSequence()
@@ -808,13 +1011,12 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         val r = camRows.getOrNull(pos) ?: return
         // 🛰️ GPS-sync mode: connect over R-SDK (BLE only, no WiFi) via the foreground service.
         if (btnGps.isChecked) {
+            pendingCardRemoteAddress = null
             if (r.device != null || r.saved) startGpsMode(r.mac, r.name ?: r.mac)
             else Toast.makeText(this, getString(R.string.camera_not_in_range, r.name ?: r.mac), Toast.LENGTH_SHORT).show()
             return
         }
-        val dev = r.device
-        if (dev != null) onCameraChosen(dev)
-        else Toast.makeText(this, getString(R.string.camera_not_in_range, r.name ?: r.mac), Toast.LENGTH_SHORT).show()
+        onCameraGalleryClick(r)
     }
 
     /** Start the R-SDK GPS-sync foreground service for [mac], requesting location/notification perms first. */
@@ -828,6 +1030,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             return
         }
         logLine("GPS sync: connecting R-SDK to $name ($mac)")
+        stopCameraPolling()
         // Cross-flow interlock: free the BLE GATT from any offload session first, so the R-SDK link
         // owns it exclusively. Running both at once is what caused the field disconnections.
         teardownOffload()
@@ -837,20 +1040,20 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
     /** Drop any live WiFi-offload session (BLE GATT + datalink + WiFi request) so the R-SDK GPS flow
      *  can take the camera's single BLE link without contention. Safe to call when nothing is active. */
-    private fun teardownOffload() {
+    private fun teardownOffload(clearCardAction: Boolean = true) {
+        if (clearCardAction) pendingCardRemoteAddress = null
+        invalidatePendingCameraActions()
         stopKeepalive()
-        dev.konraditurbe.osmosis.net.Highlights.provider = null
         dev.konraditurbe.osmosis.net.PreviewNav.clear()
         // Supersede any datalink worker still running, and close the session it is mid-fetch on.
         // Bumping the generation alone is not enough — that only stops it *publishing* its result,
         // while its socket would keep holding udp/9004 against a camera the next connect is about to
         // handshake with. Closing it here is what actually frees the port.
-        datalinkGen.incrementAndGet()
-        runCatching { pendingSession?.close() }; pendingSession = null
-        datalink?.close(); datalink = null
+        datalinkSessions.begin()
+        dev.konraditurbe.osmosis.net.Highlights.provider = null
         apJoiner?.release(); apJoiner = null
         gattClient?.disconnect(); gattClient?.close(); gattClient = null
-        cameraSessionLease?.close(); cameraSessionLease = null
+        releaseCameraOwnership()
         offloadMode = false; offloadTriggered = false; connecting = false
         // A stale datalinkStarted would make the next session's first join look like a rejoin and skip
         // startDatalink entirely, leaving the camera connected with no grid.
@@ -859,6 +1062,33 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         // here, or the next camera's pairing/REQ replies get mis-deduped against the last camera's state.
         lastPairStatus = -99; credsRequested = false; activateState = -1; reqSeen.clear()
         setConnectProgress(0)
+    }
+
+    /** Invalidates callbacks that could otherwise reconnect or open UI for a stale Activity/target. */
+    private fun invalidatePendingCameraActions() {
+        cameraSessionOwnerGeneration++
+        val ownerAcquire = cameraSessionOwnerAcquire
+        cameraSessionOwnerAcquire = null
+        ownerAcquire?.cancel()
+        if (ownerAcquire != null) {
+            connecting = false
+            setConnectProgress(0)
+        }
+        externalGateGeneration++
+        externalGateCheckInFlight = false
+        remoteLaunchGeneration++
+        remoteLaunchPending = false
+        remoteCalibrationLoadGeneration++
+        wifiFlowGeneration++
+        remotePanelLauncher?.cancelPending()
+    }
+
+    /** Releases the process-local guard first, then the Base-owned cross-process owner token. */
+    private fun releaseCameraOwnership() {
+        cameraSessionLease?.close()
+        cameraSessionLease = null
+        cameraSessionOwnerLease?.close()
+        cameraSessionOwnerLease = null
     }
 
     private fun onCamRowLongClick(pos: Int): Boolean {
@@ -885,7 +1115,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         selectorGroup.visibility = View.GONE
         gridGroup.visibility = View.VISIBLE
         btnRemote.visibility = if (
-            remotePanelLauncher != null && currentModel.moduleKey == DeviceModels.OSMO_360
+            remotePanelLauncher != null && currentModel.moduleKey in REMOTE_CONTROL_MODELS
         ) View.VISIBLE else View.GONE
     }
 
@@ -899,7 +1129,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         btnRemote.visibility = View.GONE
         gridGroup.visibility = View.GONE
         selectorGroup.visibility = View.VISIBLE
-        startCameraScan(select = true)
+        startCameraPolling()
     }
 
     private fun safeName(d: BluetoothDevice): String? = try { d.name } catch (_: SecurityException) { null }
@@ -913,25 +1143,40 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         if (gate != null) {
             if (externalGateCheckInFlight) return
             externalGateCheckInFlight = true
+            val requestGeneration = ++externalGateGeneration
             val started = gate.check(this) { availability ->
-                externalGateCheckInFlight = false
-                when {
-                    availability.available -> onCameraChosenAfterGate(device)
-                    availability.error != null -> toast(
-                        getString(R.string.external_module_check_failed, availability.error),
-                    )
-                    else -> toast(
-                        getString(
-                            R.string.external_module_camera_busy,
-                            availability.ownerName ?: getString(R.string.external_module_unknown),
-                            availability.cameraName ?: getString(R.string.the_camera),
-                        ),
-                    )
+                main.post {
+                    if (requestGeneration != externalGateGeneration || isFinishing || isDestroyed) {
+                        return@post
+                    }
+                    externalGateGeneration++ // consume this request so duplicate callbacks are stale
+                    externalGateCheckInFlight = false
+                    when {
+                        availability.available -> onCameraChosenAfterGate(device)
+                        availability.error != null -> {
+                            toast(getString(R.string.external_module_check_failed, availability.error))
+                            startCameraPolling(promptIfUnavailable = false)
+                        }
+                        else -> {
+                            toast(
+                                getString(
+                                    R.string.external_module_camera_busy,
+                                    availability.ownerName ?: getString(R.string.external_module_unknown),
+                                    availability.cameraName ?: getString(R.string.the_camera),
+                                ),
+                            )
+                            startCameraPolling(promptIfUnavailable = false)
+                        }
+                    }
                 }
             }
             if (!started) {
-                externalGateCheckInFlight = false
-                toast(getString(R.string.external_module_check_failed, "not started"))
+                if (requestGeneration == externalGateGeneration) {
+                    externalGateGeneration++
+                    externalGateCheckInFlight = false
+                    toast(getString(R.string.external_module_check_failed, "not started"))
+                    startCameraPolling(promptIfUnavailable = false)
+                }
             }
             return
         }
@@ -954,17 +1199,79 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
     }
 
     private fun connectAndOffload(device: BluetoothDevice) {
-        teardownOffload()   // fully release any prior camera (GATT, datalink, WiFi, keepalive) first —
-                            // a leaked GATT/keepalive from the last camera otherwise stalls this connect
-        when (val acquired = CameraSessionCoordinator.acquire(
+        stopCameraPolling()
+        // Preserve a card's pending Remote destination across this cleanup. Every other teardown clears it.
+        teardownOffload(clearCardAction = false)
+                            // A leaked GATT/keepalive from the last camera otherwise stalls this connect.
+        connecting = true
+        setConnectProgress(3) // tap → waiting for exclusive camera ownership
+        val requestGeneration = ++cameraSessionOwnerGeneration
+        val request = CameraSessionOwnerClient.acquireAsync(
+            context = this,
+            ownerId = MEDIA_SESSION_OWNER,
+            cameraAddress = device.address,
+            purpose = CameraSessionPurpose.MEDIA_OFFLOAD.name,
+        ) { acquired ->
+            finishOffloadOwnership(requestGeneration, device, acquired)
+        }
+        if (requestGeneration == cameraSessionOwnerGeneration && !isFinishing && !isDestroyed) {
+            cameraSessionOwnerAcquire = request
+        } else {
+            request.cancel()
+        }
+    }
+
+    private fun finishOffloadOwnership(
+        requestGeneration: Long,
+        device: BluetoothDevice,
+        acquired: CameraSessionOwnerResult,
+    ) {
+        if (requestGeneration != cameraSessionOwnerGeneration || isFinishing || isDestroyed) {
+            (acquired as? CameraSessionOwnerResult.Granted)?.lease?.close()
+            return
+        }
+        cameraSessionOwnerAcquire = null
+        val processLease = when (acquired) {
+            is CameraSessionOwnerResult.Granted -> acquired.lease
+            is CameraSessionOwnerResult.Busy -> {
+                logLine(
+                    "OFFLOAD blocked cross-process: session owned by " +
+                        "${acquired.active.ownerId} (${acquired.active.purpose})",
+                )
+                connecting = false
+                setConnectProgress(0)
+                toast(getString(R.string.camera_session_busy))
+                startCameraPolling(promptIfUnavailable = false)
+                return
+            }
+            is CameraSessionOwnerResult.Unavailable -> {
+                logLine("OFFLOAD blocked: camera-session arbiter unavailable (${acquired.reason})")
+                connecting = false
+                setConnectProgress(0)
+                toast(getString(R.string.external_module_check_failed, acquired.reason))
+                startCameraPolling(promptIfUnavailable = false)
+                return
+            }
+        }
+        when (val localResult = CameraSessionCoordinator.acquire(
             ownerId = MEDIA_SESSION_OWNER,
             cameraAddress = device.address,
             purpose = CameraSessionPurpose.MEDIA_OFFLOAD,
         )) {
-            is CameraLeaseResult.Granted -> cameraSessionLease = acquired.lease
+            is CameraLeaseResult.Granted -> {
+                cameraSessionOwnerLease = processLease
+                cameraSessionLease = localResult.lease
+            }
             is CameraLeaseResult.Busy -> {
-                logLine("OFFLOAD blocked: session owned by ${acquired.active.ownerId} (${acquired.active.purpose})")
+                processLease.close()
+                logLine(
+                    "OFFLOAD blocked: session owned by ${localResult.active.ownerId} " +
+                        "(${localResult.active.purpose})",
+                )
+                connecting = false
+                setConnectProgress(0)
                 toast(getString(R.string.camera_session_busy))
+                startCameraPolling(promptIfUnavailable = false)
                 return
             }
         }
@@ -974,8 +1281,6 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         credsRequested = false
         activateState = -1
         wpa3FallbackDone = false
-        connecting = true
-        setConnectProgress(3) // tap → connecting
         logLine("OFFLOAD [$currentBrand] $offloadSsid (${device.address})")
         // No wake broadcast here: an HCI snoop of Mimo waking a sleeping Nano showed it never
         // advertises. The sleeping camera keeps advertising ADV_IND itself, and Mimo simply connects
@@ -1050,7 +1355,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         }
         if (requestCode != REQ_PERMS) return
         if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
-            startCameraScan(select = true)
+            startCameraPolling(promptIfUnavailable = false)
         } else {
             logLine("Permissions denied — cannot scan.")
         }
@@ -1200,14 +1505,19 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         }
         // AP needs a few seconds to come up; the WifiNetworkSpecifier dialog keeps searching
         // until it appears, so a modest delay before requesting the network is fine.
-        main.postDelayed({ promptWifiConsent(offloadSsid, offloadPass) }, 3000)
+        val ownerGeneration = cameraSessionOwnerGeneration
+        main.postDelayed({
+            if (ownerGeneration == cameraSessionOwnerGeneration && offloadMode) {
+                promptWifiConsent(offloadSsid, offloadPass)
+            }
+        }, 3000)
     }
 
     /** Kick off the camera Wi-Fi join. Android's own WifiNetworkSpecifier consent popup is explanatory
      *  enough, so there's no app heads-up first — we only intervene if the *phone's* Wi-Fi is off (the
      *  join fails silently otherwise), routing the user to enable it and resuming here. */
     private fun promptWifiConsent(ssid: String, pass: String) {
-        if (isFinishing || isDestroyed) return
+        if (!offloadMode || isFinishing || isDestroyed) return
         val wifi = applicationContext.getSystemService(WIFI_SERVICE) as? android.net.wifi.WifiManager
         if (wifi != null && !wifi.isWifiEnabled) { promptEnableWifi(); return }
         startWifiFlow(ssid, pass)
@@ -1235,18 +1545,25 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
     private fun startWifiFlow(ssid: String, pass: String) {
         apJoiner?.release() // release any prior request so only one WiFi specifier is pending
+        val flowGeneration = ++wifiFlowGeneration
         setConnectProgress(35) // requesting the WiFi join
         logLine("WiFi flow: ssid=\"$ssid\" passLen=${pass.length}")
         datalinkStarted = false; wifiRejoins = 0; resumeDownloadOnRejoin = false
         val joiner = ApJoiner(this, object : ApJoiner.Listener {
             override fun onLog(s: String) = logLine(s)
-            override fun onFailed(reason: String) { logLine(reason); main.post { onWifiJoinFailed() } }
+            override fun onFailed(reason: String) {
+                logLine(reason)
+                main.post {
+                    if (flowGeneration == wifiFlowGeneration && offloadMode) onWifiJoinFailed()
+                }
+            }
             // Both callbacks arrive on a ConnectivityManager thread; hop to main so the download /
             // AP-loss flags stay single-threaded and the check-and-set in onDownloadClicked is safe.
             override fun onNetwork(network: Network, link: LinkProperties?) {
                 val ip4 = link?.linkAddresses?.map { it.address }
                     ?.firstOrNull { it is java.net.Inet4Address }
                 main.post {
+                    if (flowGeneration != wifiFlowGeneration || !offloadMode) return@post
                     wifiUp = true
                     // A second onAvailable is a rejoin. Do NOT re-run startDatalink: it would re-fetch
                     // the whole manifest and rebuild the grid, throwing away the user's queue and
@@ -1266,6 +1583,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             }
             override fun onLost() {
                 main.post {
+                    if (flowGeneration != wifiFlowGeneration) return@post
                     wifiUp = false
                     if (!offloadMode) return@post
                     // Remember to pick the transfer back up: the in-flight run is about to fail out
@@ -1290,13 +1608,19 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
     /** Open the datalink and fetch the media list after the camera Wi-Fi join succeeds. */
     private fun startDatalink() {
-                val gen = datalinkGen.incrementAndGet()
+                if (!offloadMode || isFinishing || isDestroyed) return
+                val model = currentModel
+                // Invalidate and close both an older in-flight fetch and an active session before this
+                // worker is allowed to publish. The slot makes creation/publication race-free with
+                // teardown, including the window before a fresh session reaches fetchFileList().
+                val gen = datalinkSessions.begin()
+                dev.konraditurbe.osmosis.net.Highlights.provider = null
                 Thread {
                     // Datalink port + poke come from the model AND brand: 10004/no-poke was only ever
                     // confirmed on the Xtra rebrand (own OUI EC:9E:EA), so a genuine DJI unit gets the
                     // DJI-standard 9004+poke. Either guess can be wrong on an untested model, so if the
                     // handshake never lands we retry the alternate config and log which port answered.
-                    fun open(m: CameraModel): Pair<MediaSession, List<CameraFile>> {
+                    fun open(m: CameraModel): Pair<MediaSession, List<CameraFile>>? {
                         logLine("=== media list [${m.name}] via udp/${m.datalinkPort} (poke=${m.tcpPoke}) ===")
                         // A drone speaks a different protocol end to end — the 0x51 session-open gate,
                         // flat DCF records instead of CompositePack, /v1 instead of /v2 (DroneSession).
@@ -1304,11 +1628,21 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
                         val c: MediaSession =
                             if (m.isDrone) DroneSession(::logLine, m.datalinkPort, bleDroneSerial)
                             else CameraSession(::logLine, m.datalinkPort, m.tcpPoke)
-                        c.onStatus = { s -> main.post { onCameraStatus(s) } }
-                        c.onFetchProgress = { fp -> setConnectProgress(60 + fp * 38 / 100) } // 60→98
-                        // Publish before the fetch, not after: fetchFileList owns the next 10-20 s and
-                        // teardown has to be able to close this socket during it.
-                        pendingSession = c
+                        c.onStatus = { status ->
+                            if (datalinkSessions.isCurrent(gen)) main.post {
+                                if (datalinkSessions.isCurrent(gen)) onCameraStatus(status)
+                            }
+                        }
+                        c.onFetchProgress = { progress ->
+                            if (datalinkSessions.isCurrent(gen)) main.post {
+                                if (datalinkSessions.isCurrent(gen)) {
+                                    setConnectProgress(60 + progress * 38 / 100) // 60→98
+                                }
+                            }
+                        }
+                        // Publish before the fetch, not after. Installation shares teardown's lock, so
+                        // a worker that creates its session after teardown immediately closes it.
+                        if (!datalinkSessions.installPending(gen, c)) return null
                         val f = runCatching { c.fetchFileList("192.168.2.1") }
                             .getOrElse { logLine("datalink error: ${it.message}"); emptyList() }
                         return c to f
@@ -1316,40 +1650,44 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
 
                     /** Abandon this worker's session if a newer connect has replaced it. */
                     fun superseded(dl: dev.konraditurbe.osmosis.core.MediaSession): Boolean {
-                        if (gen == datalinkGen.get()) return false
+                        if (datalinkSessions.isCurrent(gen)) return false
                         logLine("datalink: this connect was superseded by a newer one — dropping its session")
-                        runCatching { dl.close() }
+                        datalinkSessions.discard(dl)
                         return true
                     }
 
-                    datalink?.close()
-                    var (dl, files) = open(currentModel)
+                    val opened = open(model) ?: return@Thread
+                    var (dl, files) = opened
                     if (superseded(dl)) return@Thread
                     if (!dl.handshakeOk) {
-                        val alt = currentModel.alternate()
-                        logLine("datalink: nothing answered on udp/${currentModel.datalinkPort} — trying udp/${alt.datalinkPort}")
-                        runCatching { dl.close() }
-                        val retry = open(alt)
+                        val alt = model.alternate()
+                        logLine("datalink: nothing answered on udp/${model.datalinkPort} — trying udp/${alt.datalinkPort}")
+                        datalinkSessions.discard(dl)
+                        val retry = open(alt) ?: return@Thread
                         dl = retry.first; files = retry.second
                         if (dl.handshakeOk) logLine(
-                            "datalink: *** ${currentModel.name} actually speaks udp/${alt.datalinkPort} " +
+                            "datalink: *** ${model.name} actually speaks udp/${alt.datalinkPort} " +
                                 "(poke=${alt.tcpPoke}) — please report so the model table can be fixed ***"
                         )
                     }
                     if (superseded(dl)) return@Thread
                     if (!dl.browseReady) {
-                        pendingSession = null
-                        runCatching { dl.close() }
-                        main.post { onPlaybackUnavailable() }
+                        datalinkSessions.discard(dl)
+                        main.post {
+                            if (datalinkSessions.isCurrent(gen)) onPlaybackUnavailable()
+                        }
                         return@Thread
                     }
-                    pendingSession = null
-                    datalink = dl
-                    dev.konraditurbe.osmosis.net.Highlights.provider = { h -> dl.getHighlights(h) }
                     // Always: it holds the AP up, polls status for the pill, and holds playback (#12).
                     // Gating on files.isNotEmpty() left an empty camera (e.g. an Action 6 with no media)
                     // with a dead pill — status is only parsed in this loop.
-                    dl.startKeepAlive()
+                    if (!datalinkSessions.promote(gen, dl) { promoted ->
+                            promoted.startKeepAlive()
+                            dev.konraditurbe.osmosis.net.Highlights.provider = { h ->
+                                promoted.getHighlights(h)
+                            }
+                        }
+                    ) return@Thread
                     // Storage (/v2 mount) is resolved per file from its handle's store bit (internal
                     // 0x40000000 → storage 1, else 0), confirmed by one HEAD per store. See resolveStorage.
                     storageForBit.clear()
@@ -1358,7 +1696,11 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
                         fixed.groupBy { it.storage }.entries.sortedBy { it.key }
                             .joinToString(", ") { (s, list) -> "storage=$s (${list.size} files)" } +
                         (if (dl.moreAvailable) " · more on scroll" else ""))
-                    main.post { showGrid(fixed) }
+                    main.post {
+                        if (datalinkSessions.isCurrent(gen) && !isFinishing && !isDestroyed) {
+                            showGrid(fixed)
+                        }
+                    }
                 }.start()
     }
 
@@ -1426,6 +1768,8 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             savedCameras.save(it, offloadSsid, currentModelId)
             CameraShortcuts.refresh(this)   // just connected → float this camera to the top of the shortcuts
         }
+        val openRemoteFromCard = pendingCardRemoteAddress == currentAddress
+        pendingCardRemoteAddress = null
         switchToGrid()
         statusPill.render(pillName(), getString(R.string.connected_wifi), currentStatus, showPower = isNano())
         applyOrientationChrome()   // hide the pill if we're (re)entering the grid in landscape
@@ -1455,6 +1799,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             } else {
                 logLine("No media found on camera.")
             }
+            if (openRemoteFromCard) main.post(::openRemoteForConnectedCamera)
             return
         }
         findViewById<View>(R.id.emptyGallery).visibility = View.GONE
@@ -1488,6 +1833,7 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         installPullToLoadMore()
         logLine("Grid ready: ${files.size} files. Tap a cell to preview + queue, then Download. Long-press a cell to delete.")
         prefetchPanoramaCalibration(files)
+        if (openRemoteFromCard) main.post(::openRemoteForConnectedCamera)
     }
 
     /** 3 columns portrait, 6 landscape — matches the old GridView numColumns. */
@@ -2062,7 +2408,9 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         // it inside that match), so it doubles as the robust "this is a DJI device" signal for Brand.
         val brand = Brand.of(addr, name, djiCid = modelId != null)
         val model = CameraModel.resolve(modelId, name, brand)
-        if (discovered.put(addr, Cam(device, name, brand, rssi, modelId, model)) == null) {
+        val camera = Cam(device, name, brand, rssi, modelId, model)
+        currentScanHits[addr] = camera
+        if (discovered.put(addr, camera) == null) {
             logLine("found ${model.name} [$brand] (${name ?: addr}) rssi=$rssi" +
                 if (!model.verified) "  🧪" else "")
             main.post { rebuildCameraList() }
@@ -2232,9 +2580,6 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
             // the gallery is now stale, so tear the session down and return to the camera selector.
             if (gridGroup.visibility == View.VISIBLE) {
                 logLine("Camera link lost — returning to camera list.")
-                datalink?.close()
-                apJoiner?.release()
-                cameraSessionLease?.close(); cameraSessionLease = null
                 grid.adapter = null
                 adapter = null
                 switchToSelector()
@@ -2243,8 +2588,9 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
                 // A drop after pairing is the normal WiFi handoff (keep the progress bar going);
                 // a drop before pairing means the connection failed early — clear the bar.
                 if (!offloadTriggered) {
-                    cameraSessionLease?.close(); cameraSessionLease = null
+                    releaseCameraOwnership()
                     setConnectProgress(0)
+                    startCameraPolling(promptIfUnavailable = false)
                 }
             }
         }
@@ -2264,6 +2610,8 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         private const val REQ_PERMS = 1001
         private const val REQ_GPS_PERMS = 1002
         private const val MEDIA_SESSION_OWNER = "media-main-activity"
+        private const val CAMERA_SCAN_DURATION_MS = 4_000L
+        private const val CAMERA_SCAN_POLL_DELAY_MS = 6_000L
         /** Total AP rejoins allowed per offload session — a cap, deliberately not reset on success,
          *  so a flapping AP ends in a clear "tap Offload" rather than an endless reconnect loop. */
         private const val MAX_WIFI_REJOINS = 3
@@ -2274,6 +2622,10 @@ class MainActivity : AppCompatActivity(), OsmoScanner.Listener, GattClient.Liste
         /** How many filenames the bulk-delete confirmation names before it says "…and N more". */
         private const val BULK_DELETE_NAMES_SHOWN = 6
         private const val MAX_REMOTE_CALIBRATION_CANDIDATES = 8
+        private val REMOTE_CONTROL_MODELS = setOf(
+            DeviceModels.OSMO_360,
+            DeviceModels.OSMO_POCKET_4_PRO,
+        )
         private val PANORAMA_CALIBRATION_PATH =
             Regex("\\.(?:LRF|LRV|OSV|INSV)(?:$|[&#])", RegexOption.IGNORE_CASE)
     }

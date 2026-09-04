@@ -12,9 +12,37 @@
     <string name="stop">Зупинити</string>
     <string name="retry">Повторити</string>
 
+    <!-- About and open-source acknowledgements -->
+    <string name="about">Про застосунок</string>
+    <string name="about_back">← Назад</string>
+    <string name="about_title">Про osmodule</string>
+    <string name="about_version">Версія %1$s</string>
+    <string name="about_intro">Компактний модульний Android-клієнт для перегляду, передавання матеріалів і керування підтримуваними камерами DJI Osmo через їхню локальну мережу.</string>
+    <string name="about_open_source_title">Проєкти з відкритим кодом і джерела</string>
+    <string name="about_open_source_intro">Це сторонні реалізації та дослідження протоколів, які явно використовує osmodule. Нижче розрізняються «адаптована реалізація» та «дослідницьке джерело»; торкніться проєкту, щоб відкрити його сторінку.</string>
+    <string name="about_relationship_inherited_mit">Успадкована реалізація · MIT</string>
+    <string name="about_relationship_adapted_mit">Адаптована реалізація · MIT</string>
+    <string name="about_relationship_adapted_apache">Адаптована реалізація · Apache-2.0</string>
+    <string name="about_relationship_research">Джерело дослідження протоколу · діють умови першоджерела</string>
+    <string name="about_relationship_dji_sample">Портовано й змінено · приклад MIT; умови DJI EULA для протоколу</string>
+    <string name="about_project_osmosis">Початковий Android-застосунок і основа, від якої походить osmodule.</string>
+    <string name="about_project_open_pocket_cine">Маршрути DUML, дані команд, тлумачення стану та поведінка HEVC-перегляду Pocket 4P.</string>
+    <string name="about_project_osmo360">UDP/TCP-підключення перегляду наживо та поділ AVC-потоку Osmo 360.</string>
+    <string name="about_project_panoforge">Декодування заводських даних калібрування Osmo 360 і дослідження каліброваної проєкції.</string>
+    <string name="about_project_ogs">Дослідження протоколів камер DJI методом зворотної розробки.</string>
+    <string name="about_project_dji_remote">Запозичені або адаптовані кадри DUML, CRC, читання/запис байтів і вибрані дані команд.</string>
+    <string name="about_project_osmo_download">Дослідження пошуку медіа та протоколу завантаження Osmo.</string>
+    <string name="about_project_wifi_connect">Дослідження Wi-Fi-з’єднання та сполучення камер DJI.</string>
+    <string name="about_project_osmo_ble">Дослідження протоколу Bluetooth Low Energy для DJI Osmo.</string>
+    <string name="about_project_gps_demo">Кадрування R-SDK, CRC, BLE-сеанс, команди, передавання GPS і обробка стану з опублікованого прикладу DJI.</string>
+    <string name="about_project_link_description">Відкрити сторінку першоджерела %1$s</string>
+    <string name="about_full_notices">Повні повідомлення на GitHub</string>
+    <string name="about_open_link_failed">Немає застосунку, який може відкрити це посилання.</string>
+    <string name="about_legal">Власний код osmodule та успадкована від Osmosis основа використовують ліцензію MIT. Для адаптованих і сторонніх частин діють умови, наведені вище. osmodule є незалежним проєктом, не пов’язаним із DJI, не авторизованим і не схваленим нею. DJI та Osmo є торговельними марками відповідних власників.</string>
+
     <!-- Camera selector -->
     <string name="cameras">Камери</string>
-    <string name="remote_control_mode">Дистанційне керування підключеною Osmo 360</string>
+    <string name="remote_control_mode">Дистанційне керування підключеною камерою</string>
     <string name="open_remote_control">Пульт</string>
     <string name="install_remote_control">Установити пульт</string>
     <string name="remote_control_reconnecting">Перемикання з’єднань і відкриття дистанційного керування…</string>
@@ -22,6 +50,8 @@
     <string name="remote_plugin_install_hint">Установіть або оновіть дистанційне керування в розділі керування модулями.</string>
     <string name="manage_modules">Керувати модулями</string>
     <string name="device_modules_button">Модулі</string>
+    <string name="camera_gallery_action">Альбом</string>
+    <string name="camera_installed_modules">Установлено: %1$s</string>
     <string name="device_modules_title">Модулі для %1$s</string>
     <string name="device_modules_intro">Модулі, які підтримує цей пристрій, та їхній поточний стан установлення.</string>
     <string name="device_modules_empty">Для цього пристрою наразі немає модулів.</string>
@@ -40,11 +70,11 @@
     <string name="video_folder_reset_done">Відео зберігатимуться в Movies/osmodule.</string>
     <string name="rescan">Сканувати знову</string>
     <string name="scanning">Сканування…</string>
-    <string name="no_cameras_hint">Камер поки немає — увімкніть одну й торкніться «Сканувати знову».</string>
+    <string name="no_cameras_hint">Камер поки немає — увімкніть камеру, і вона з’явиться автоматично.</string>
     <string name="cameras_in_range">%1$d/%2$d збережених у зоні дії · %3$d нових</string>
     <string name="new_tag">НОВА</string>
     <string name="no_bluetooth">На цьому пристрої немає Bluetooth.</string>
-    <string name="camera_not_in_range">%1$s не в зоні дії — увімкніть її, потім скануйте знову</string>
+    <string name="camera_not_in_range">%1$s не в зоні дії — увімкніть її та трохи зачекайте</string>
 
     <!-- Bluetooth off dialog -->
     <string name="bluetooth_off_title">Bluetooth вимкнено</string>
@@ -180,7 +210,7 @@
     <string name="cant_play_clip">Не вдається відтворити цей кліп (%1$d/%2$d)</string>
     <string name="preview_unavailable">Попередній перегляд недоступний</string>
     <string name="open_360_viewer">Відкрити інтерактивний перегляд 360°</string>
-    <string name="module_not_for_camera">Цей модуль підтримує лише Osmo 360.</string>
+    <string name="module_not_for_camera">Для цієї камери немає доступного модуля дистанційного керування.</string>
     <string name="pause_then_set_start">Призупиніть, потім задайте початок</string>
     <string name="pause_then_set_end">Призупиніть, потім задайте кінець</string>
     <string name="set_start_first">Спочатку задайте початок [</string>

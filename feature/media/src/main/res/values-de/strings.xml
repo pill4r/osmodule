@@ -12,9 +12,37 @@
     <string name="stop">Stopp</string>
     <string name="retry">Erneut versuchen</string>
 
+    <!-- About and open-source acknowledgements -->
+    <string name="about">Über</string>
+    <string name="about_back">← Zurück</string>
+    <string name="about_title">Über osmodule</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_intro">Ein schlanker, modularer Android-Client zum Anzeigen, Übertragen und Steuern unterstützter DJI-Osmo-Kameras über deren lokales Netzwerk.</string>
+    <string name="about_open_source_title">Open-Source-Projekte &amp; Referenzen</string>
+    <string name="about_open_source_intro">Diese Upstream-Implementierungen und Protokollrecherchen verwendet osmodule ausdrücklich. „Angepasst“ und „Forschungsreferenz“ werden unten unterschieden; tippe auf ein Projekt, um dessen Upstream-Seite zu öffnen.</string>
+    <string name="about_relationship_inherited_mit">Übernommene Implementierung · MIT</string>
+    <string name="about_relationship_adapted_mit">Angepasste Implementierung · MIT</string>
+    <string name="about_relationship_adapted_apache">Angepasste Implementierung · Apache-2.0</string>
+    <string name="about_relationship_research">Protokoll-Forschungsreferenz · Upstream-Bedingungen gelten</string>
+    <string name="about_relationship_dji_sample">Portiert und angepasst · MIT-Beispiel; DJI-EULA für das Protokoll</string>
+    <string name="about_project_osmosis">Ursprüngliche Android-Anwendung und Grundlage, von der osmodule abgeleitet wurde.</string>
+    <string name="about_project_open_pocket_cine">Pocket-4P-DUML-Routen, Befehlsdaten, Statusauswertung und HEVC-Livebildverhalten.</string>
+    <string name="about_project_osmo360">UDP/TCP-Livebild-Handshake und AVC-Framing für Osmo 360.</string>
+    <string name="about_project_panoforge">Dekodierung der Osmo-360-Werkskalibrierung und Forschung zur kalibrierten Projektion.</string>
+    <string name="about_project_ogs">Forschung zu rückentwickelten DJI-Kameraprotokollen.</string>
+    <string name="about_project_dji_remote">Übernommene oder angepasste DUML-Rahmen, CRC, Byte-Lese-/Schreiblogik und ausgewählte Befehlsdaten.</string>
+    <string name="about_project_osmo_download">Forschung zu Medienerkennung und Downloadprotokoll von Osmo.</string>
+    <string name="about_project_wifi_connect">Forschung zu WLAN-Verbindung und Kopplung von DJI-Kameras.</string>
+    <string name="about_project_osmo_ble">Forschung zum Bluetooth-Low-Energy-Protokoll von DJI Osmo.</string>
+    <string name="about_project_gps_demo">R-SDK-Rahmen, CRC, BLE-Sitzung, Befehle, GPS-Übertragung und Statusverarbeitung aus DJIs veröffentlichtem Beispiel.</string>
+    <string name="about_project_link_description">Upstream-Projektseite von %1$s öffnen</string>
+    <string name="about_full_notices">Vollständige Hinweise auf GitHub</string>
+    <string name="about_open_link_failed">Keine App zum Öffnen dieses Links verfügbar.</string>
+    <string name="about_legal">Der eigene Code von osmodule und die von Osmosis abgeleitete Grundlage stehen unter der MIT-Lizenz. Für angepasste und fremde Bestandteile gelten die oben genannten Bedingungen. osmodule ist unabhängig und weder mit DJI verbunden noch von DJI autorisiert oder unterstützt. DJI und Osmo sind Marken ihrer jeweiligen Eigentümer.</string>
+
     <!-- Camera selector -->
     <string name="cameras">Kameras</string>
-    <string name="remote_control_mode">Fernsteuerung für die verbundene Osmo 360</string>
+    <string name="remote_control_mode">Fernsteuerung für die verbundene Kamera</string>
     <string name="open_remote_control">Fernsteuerung</string>
     <string name="install_remote_control">Fernsteuerung installieren</string>
     <string name="remote_control_reconnecting">Verbindungen werden gewechselt und die Fernsteuerung wird geöffnet…</string>
@@ -22,6 +50,8 @@
     <string name="remote_plugin_install_hint">Installiere oder aktualisiere die Fernsteuerung in der Modulverwaltung.</string>
     <string name="manage_modules">Module verwalten</string>
     <string name="device_modules_button">Module</string>
+    <string name="camera_gallery_action">Album</string>
+    <string name="camera_installed_modules">Installiert: %1$s</string>
     <string name="device_modules_title">Module für %1$s</string>
     <string name="device_modules_intro">Von diesem Gerät unterstützte Module und ihr aktueller Installationsstatus.</string>
     <string name="device_modules_empty">Für dieses Gerät sind derzeit keine Module aufgeführt.</string>
@@ -40,11 +70,11 @@
     <string name="video_folder_reset_done">Videos werden in Movies/osmodule gespeichert.</string>
     <string name="rescan">Neu suchen</string>
     <string name="scanning">Suche läuft…</string>
-    <string name="no_cameras_hint">Noch keine Kameras – schalte eine ein und tippe auf Neu suchen.</string>
+    <string name="no_cameras_hint">Noch keine Kameras – einschalten; sie werden automatisch angezeigt.</string>
     <string name="cameras_in_range">%1$d/%2$d gespeicherte in Reichweite · %3$d neue</string>
     <string name="new_tag">NEU</string>
     <string name="no_bluetooth">Dieses Gerät hat kein Bluetooth.</string>
-    <string name="camera_not_in_range">%1$s ist nicht in Reichweite – einschalten, dann neu suchen</string>
+    <string name="camera_not_in_range">%1$s ist nicht in Reichweite – einschalten und kurz warten</string>
 
     <!-- Bluetooth off dialog -->
     <string name="bluetooth_off_title">Bluetooth ist aus</string>
@@ -180,7 +210,7 @@
     <string name="cant_play_clip">Dieser Clip kann nicht abgespielt werden (%1$d/%2$d)</string>
     <string name="preview_unavailable">Vorschau nicht verfügbar</string>
     <string name="open_360_viewer">Interaktive 360°-Ansicht öffnen</string>
-    <string name="module_not_for_camera">Dieses Modul unterstützt nur Osmo 360.</string>
+    <string name="module_not_for_camera">Für diese Kamera ist kein Fernsteuerungsmodul verfügbar.</string>
     <string name="pause_then_set_start">Pausiere, dann setze den Startpunkt</string>
     <string name="pause_then_set_end">Pausiere, dann setze den Endpunkt</string>
     <string name="set_start_first">Setze zuerst den Startpunkt [</string>

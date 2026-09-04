@@ -12,6 +12,34 @@
     <string name="stop">Stop</string>
     <string name="retry">Retry</string>
 
+    <!-- About and open-source acknowledgements -->
+    <string name="about">About</string>
+    <string name="about_back">← Back</string>
+    <string name="about_title">About osmodule</string>
+    <string name="about_version">Version %1$s</string>
+    <string name="about_intro">A focused, modular Android client for browsing, transferring and controlling supported DJI Osmo cameras on their local network.</string>
+    <string name="about_open_source_title">Open-source projects &amp; references</string>
+    <string name="about_open_source_intro">These are the upstream implementations and protocol research explicitly used by osmodule. “Adapted” and “research reference” are distinguished below; tap a project to open its upstream page.</string>
+    <string name="about_relationship_inherited_mit">Inherited implementation · MIT</string>
+    <string name="about_relationship_adapted_mit">Adapted implementation · MIT</string>
+    <string name="about_relationship_adapted_apache">Adapted implementation · Apache-2.0</string>
+    <string name="about_relationship_research">Protocol research reference · upstream terms apply</string>
+    <string name="about_relationship_dji_sample">Ported and modified · MIT sample; DJI EULA protocol terms</string>
+    <string name="about_project_osmosis">Original Android application and the foundation from which osmodule was derived.</string>
+    <string name="about_project_open_pocket_cine">Pocket 4P DUML routes, command payloads, status interpretation and HEVC live-view behavior.</string>
+    <string name="about_project_osmo360">Osmo 360 UDP/TCP live-view handshake and AVC framing.</string>
+    <string name="about_project_panoforge">Osmo 360 factory-calibration metadata decoding and calibrated projection research.</string>
+    <string name="about_project_ogs">Reverse-engineered DJI camera protocol research.</string>
+    <string name="about_project_dji_remote">Vendored or adapted DUML framing, CRC, byte reader/writer and selected command payloads.</string>
+    <string name="about_project_osmo_download">Osmo media discovery and download protocol research.</string>
+    <string name="about_project_wifi_connect">DJI camera Wi-Fi connection and pairing research.</string>
+    <string name="about_project_osmo_ble">DJI Osmo Bluetooth Low Energy protocol research.</string>
+    <string name="about_project_gps_demo">R-SDK framing, CRC, BLE session, commands, GPS push and status handling from DJI\'s published sample.</string>
+    <string name="about_project_link_description">Open %1$s upstream project page</string>
+    <string name="about_full_notices">Full notices on GitHub</string>
+    <string name="about_open_link_failed">No app is available to open this link.</string>
+    <string name="about_legal">osmodule\'s original code and Osmosis-derived foundation use the MIT License. Adapted and third-party portions remain under the terms listed above. osmodule is independent and is not affiliated with, authorized by or endorsed by DJI. DJI and Osmo are trademarks of their respective owners.</string>
+
     <!-- Camera selector -->
     <string name="cameras">Cameras</string>
     <string name="cameras_subtitle">Connect, browse and transfer</string>
@@ -20,7 +48,7 @@
     <string name="camera_offline">Offline</string>
     <string name="camera_row_description">%1$s, %2$s, %3$s</string>
     <string name="camera_beta_name">%1$s · Beta</string>
-    <string name="remote_control_mode">Remote control for the connected Osmo 360</string>
+    <string name="remote_control_mode">Remote control for the connected camera</string>
     <string name="open_remote_control">Remote</string>
     <string name="install_remote_control">Install remote</string>
     <string name="remote_control_reconnecting">Switching connections and opening Remote Control…</string>
@@ -28,6 +56,8 @@
     <string name="remote_plugin_install_hint">Install or update Remote Control from Module management.</string>
     <string name="manage_modules">Manage modules</string>
     <string name="device_modules_button">Modules</string>
+    <string name="camera_gallery_action">Album</string>
+    <string name="camera_installed_modules">Installed: %1$s</string>
     <string name="device_modules_title">%1$s modules</string>
     <string name="device_modules_intro">Modules supported by this device and their current installation status.</string>
     <string name="device_modules_empty">No modules are currently listed for this device.</string>
@@ -46,11 +76,11 @@
     <string name="video_folder_reset_done">Videos will be saved to Movies/osmodule.</string>
     <string name="rescan">Rescan</string>
     <string name="scanning">Scanning…</string>
-    <string name="no_cameras_hint">No cameras yet — turn one on and tap Rescan.</string>
+    <string name="no_cameras_hint">No cameras yet — turn one on and it will appear automatically.</string>
     <string name="cameras_in_range">%1$d/%2$d saved in range · %3$d new</string>
     <string name="new_tag">NEW</string>
     <string name="no_bluetooth">This device has no Bluetooth.</string>
-    <string name="camera_not_in_range">%1$s isn\'t in range — turn it on, then Rescan</string>
+    <string name="camera_not_in_range">%1$s isn\'t in range — turn it on and wait a moment</string>
 
     <!-- Bluetooth off dialog -->
     <string name="bluetooth_off_title">Bluetooth is off</string>
@@ -194,7 +224,7 @@
     <string name="cant_play_clip">Can\'t play this clip (%1$d/%2$d)</string>
     <string name="preview_unavailable">Preview unavailable</string>
     <string name="open_360_viewer">Open interactive 360° view</string>
-    <string name="module_not_for_camera">This module only supports Osmo 360.</string>
+    <string name="module_not_for_camera">No remote-control module is available for this camera.</string>
     <string name="pause_then_set_start">Pause, then set the start point</string>
     <string name="pause_then_set_end">Pause, then set the end point</string>
     <string name="set_start_first">Set the start point [ first</string>

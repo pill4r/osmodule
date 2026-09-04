@@ -38,6 +38,9 @@
             android:name="dev.konraditurbe.osmosis.ui.MediaPreviewActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="false" />
+        <activity
+            android:name="dev.konraditurbe.osmosis.ui.AboutActivity"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
