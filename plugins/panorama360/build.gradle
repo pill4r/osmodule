@@ -52,9 +52,14 @@ android {
         targetCompatibility JavaVersion.VERSION_21
     }
     kotlinOptions { jvmTarget = '21' }
+    sourceSets {
+        main.assets.srcDir rootProject.file('LICENSES')
+    }
 }
 
 dependencies {
     implementation "dev.konraditurbe.osmodule:plugin-sdk:${rootProject.pluginSdkVersion}"
     implementation project(':feature:panorama360')
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.10.0'
 }
