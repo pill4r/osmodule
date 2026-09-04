@@ -49,6 +49,7 @@ jobs:
           :app:assembleRelease :app:assembleDebug
           :plugins:panorama360:assembleRelease :plugins:panorama360:assembleDebug
           :plugins:rsdk:assembleRelease :plugins:rsdk:assembleDebug
+          :plugins:pocket4p:assembleRelease :plugins:pocket4p:assembleDebug
 
       - name: Upload Base release APK
         uses: actions/upload-artifact@v7
@@ -64,11 +65,18 @@ jobs:
           path: plugins/panorama360/build/outputs/apk/release/panorama360-release.apk
           if-no-files-found: error
 
-      - name: Upload R-SDK release APK
+      - name: Upload Osmo 360 RC release APK
         uses: actions/upload-artifact@v7
         with:
-          name: osmodule-rsdk-release-apk
+          name: osmodule-osmo360-rc-release-apk
           path: plugins/rsdk/build/outputs/apk/release/rsdk-release.apk
+          if-no-files-found: error
+
+      - name: Upload Pocket 4P release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-pocket4p-release-apk
+          path: plugins/pocket4p/build/outputs/apk/release/pocket4p-release.apk
           if-no-files-found: error
 
       - name: Upload release mappings
@@ -79,6 +87,7 @@ jobs:
             app/build/outputs/mapping/release/**
             plugins/panorama360/build/outputs/mapping/release/**
             plugins/rsdk/build/outputs/mapping/release/**
+            plugins/pocket4p/build/outputs/mapping/release/**
           if-no-files-found: error
 
       - name: Upload Base Debug APK
@@ -95,11 +104,18 @@ jobs:
           path: plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk
           if-no-files-found: error
 
-      - name: Upload R-SDK Debug APK
+      - name: Upload Osmo 360 RC Debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: osmodule-rsdk-debug-apk
+          name: osmodule-osmo360-rc-debug-apk
           path: plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk
+          if-no-files-found: error
+
+      - name: Upload Pocket 4P Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-pocket4p-debug-apk
+          path: plugins/pocket4p/build/outputs/apk/debug/pocket4p-debug.apk
           if-no-files-found: error
 
       # Release APK only. The debug build stays an Actions artifact (above) where it is useful
@@ -117,5 +133,6 @@ jobs:
             app/build/outputs/apk/release/app-release.apk
             plugins/panorama360/build/outputs/apk/release/panorama360-release.apk
             plugins/rsdk/build/outputs/apk/release/rsdk-release.apk
+            plugins/pocket4p/build/outputs/apk/release/pocket4p-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

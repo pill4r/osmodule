@@ -4,11 +4,10 @@ package dev.konraditurbe.osmosis.ble
  * Per-model camera capabilities, keyed on the BLE manufacturer model id (payload bytes [0:1], LE).
  *
  * Only the datalink UDP port and WiFi security actually vary across the Osmo line — pairing (the
- * "osmo" PIN), the `/v2` HTTP media API, and DJI_/CAM_ file naming are shared. Cells marked
- * [verified] were confirmed on real hardware: **Nano, Action 5 Pro, Action 6, Osmo 360 and Pocket 3** all
- * browse + download on 9004 (tester-confirmed). Everything else falls back to the most common config
- * (9004 + TCP-7001 poke + WPA2) so an unrecognized DJI Osmo is still *attempted* rather than refused.
- * Still open: the Action 4 pairs, but its AP never comes up.
+ * "osmo" PIN), the `/v2` HTTP media API, and DJI_/CAM_ file naming are shared. [verified] records this
+ * project's own hardware coverage, not historical Osmosis reports or fixture coverage. It is true
+ * only for Osmo 360 and Pocket 4 Pro. Other profiles remain available as unverified compatibility
+ * paths and fall back to the most common config (9004 + TCP-7001 poke + WPA2) when necessary.
  */
 data class CameraModel(
     val name: String,
@@ -19,11 +18,12 @@ data class CameraModel(
     val wpa3: Boolean = false,
     val verified: Boolean = false,
     // The Pocket 3 has exactly one store — its microSD, always served at `/v2?storage=0`. Pin it there
-    // instead of running the handle/HEAD storage resolution (tester-confirmed storage=0 across every
-    // session). Other models can carry SD + internal, so they still resolve per file.
+    // instead of running the handle/HEAD storage resolution. This is an inherited compatibility
+    // rule; it does not by itself make Pocket 3 verified in this project. Other models can carry SD
+    // + internal, so they still resolve per file.
     val singleSdStorage: Boolean = false,
     // DJI drones (Mavic, Neo, …) speak the same BLE DUML but differ downstream: their WiFi creds only
-    // unlock for the official pairing token ("DJI FLY", not "osmo"), pairing is confirmed by a ~2 s
+    // unlock for the official pairing token ("DJI FLY", not "osmo"), pairing commonly requires a ~2 s
     // power-button press, and their media API is NOT the camera datalink (see DroneSession, and
     // MEDIA_PROTOCOL.md § "DJI Drone QuickTransfer media offload").
     val isDrone: Boolean = false,
@@ -43,24 +43,24 @@ data class CameraModel(
         val DEFAULT = CameraModel("DJI Osmo camera")
         const val ID_OSMO_360 = 0x0017
         const val ID_OSMO_NANO = 0x0019
-        const val ID_MAVIC_3 = 0x0070  // drone (confirmed on hardware, mfr 7000…)
-        const val ID_NEO_2 = 0x007e    // drone (tester scan, mfr 7e00…)
+        const val ID_MAVIC_3 = 0x0070  // inherited drone profile (mfr 7000…); unverified here
+        const val ID_NEO_2 = 0x007e    // inherited drone scan (mfr 7e00…); unverified here
 
         private val BY_ID: Map<Int, CameraModel> = mapOf(
             0x0010 to CameraModel("Osmo Action 2"),
             0x0012 to CameraModel("Osmo Action 3"),
-            // Tester-confirmed 2026-08-24: pair, BLE creds, a WPA2 AP, datalink on 9004.
+            // Inherited Action 4 transport profile: WPA2 with datalink on 9004.
             0x0014 to CameraModel("Osmo Action 4"),
-            // Genuine Action 5 Pro on 9004 — tester-confirmed (grid + download). The Xtra rebrand
-            // gets flipped to 10004 by resolve(); see the Xtra note below.
-            0x0015 to CameraModel("Osmo Action 5 Pro", verified = true),
+            // The genuine Action 5 Pro uses the inherited 9004 profile. The Xtra rebrand gets
+            // flipped to 10004 by resolve(); see the Xtra note below.
+            0x0015 to CameraModel("Osmo Action 5 Pro"),
             // Tester-confirmed 2026-09-01: the AP is WPA2 (not the previously inferred WPA3),
             // datalink is 9004 + TCP poke, playback is held and a 12-file manifest is returned.
             ID_OSMO_360 to CameraModel("Osmo 360", moduleKey = "osmo360", verified = true),
-            0x0018 to CameraModel("Osmo Action 6", verified = true),
-            ID_OSMO_NANO to CameraModel("Osmo Nano", verified = true),
+            0x0018 to CameraModel("Osmo Action 6"),
+            ID_OSMO_NANO to CameraModel("Osmo Nano"),
             // It DOES broadcast mfr data. This said otherwise, copied from the reverse-engineered
-            // Pocket 3 BLE library in reference/, which states it in four places. Our own captures say
+            // Pocket 3 BLE library in reference/, which states it in four places. Inherited captures say
             // no: 32 scan hits across TWO different units carry it, every one with model id 0x0020 in
             // the classic field —
             //     58:B8:58:CC:F8:23  mfr[cid=08aa 2000{00,80,c0}58b858ccf823]   31 hits, 5 sessions
@@ -68,15 +68,13 @@ data class CameraModel(
             // (byte 2 cycles 00/40/80/c0 — the top two bits look like a boot counter, and the MAC
             // follows.) Either their macOS BLE stack hid it or older firmware omitted it. Resolving by
             // id works; the name fallback stays for units that genuinely don't advertise.
-            // Tester-confirmed on 9004; its _OP3-suffixed
-            // naming decodes in full (path + ext + delete handle). Note: rejects 0x53/0x10 (e0) but its
-            // AP comes up anyway via the 0x00/0x2b session, so the wake is belt-and-suspenders here.
-            0x0020 to CameraModel("Osmo Pocket 3", verified = true, singleSdStorage = true),
-            // Tester-confirmed 2026-08-08 on Android 10 (our minSdk): connect, a 45-file internal
-            // manifest, playback held, and downloads the tester rated "same or maybe faster than
-            // Mimo". Its `0x02/0xdc` reports real capacity, unlike the Nano's. Note it advertises
-            // the CLASSIC format while the Pro sibling below uses the newer one — see BleAdvert.
-            0x0021 to CameraModel("Osmo Pocket 4", verified = true),
+            // The inherited Pocket 3 profile uses 9004; its _OP3-suffixed naming decodes in full
+            // (path + ext + delete handle). Note: it rejects 0x53/0x10 (e0), but the inherited flow
+            // also brings its AP up via the 0x00/0x2b session.
+            0x0020 to CameraModel("Osmo Pocket 3", singleSdStorage = true),
+            // Inherited Pocket 4 profile. Its `0x02/0xdc` capacity response and classic-format advert
+            // differ from the Pro sibling below; see BleAdvert.
+            0x0021 to CameraModel("Osmo Pocket 4"),
             // Tester-confirmed 2026-08-07 on 9004 + poke: pair, creds, AP, datalink handshake, a
             // 46-file manifest across two stores, playback held, and 43 MB of a clip transferred over
             // /v2. The transfer then died with the AP, not with the protocol — so the datalink config
@@ -87,22 +85,21 @@ data class CameraModel(
             // **udp/9003** with NO tcp-7001 poke — plus a `0x51/0x02` session-open the cameras don't
             // need, before which the aircraft answers nothing at all.
             //
-            // The Mavic 3 is verified end-to-end on hardware: pair, creds, AP, the full paged library
-            // with thumbnails, preview and download. The Neo 2 is a tester scan only — never offloaded,
-            // port unconfirmed, sharing the drone default until someone tests one.
-            ID_MAVIC_3 to CameraModel("Mavic 3", datalinkPort = 9003, tcpPoke = false, isDrone = true, verified = true),
+            // These inherited drone profiles remain available for compatibility, but neither is
+            // counted as hardware-verified by this project.
+            ID_MAVIC_3 to CameraModel("Mavic 3", datalinkPort = 9003, tcpPoke = false, isDrone = true),
             ID_NEO_2 to CameraModel("DJI Neo 2", datalinkPort = 9003, tcpPoke = false, isDrone = true),
         )
 
         /**
          * Xtra's shell-company product names for the DJI models they rebadge.
          * Keyed by the shared DJI BLE model id — the Xtra units advertise the *same* id
-         * as the DJI original (confirmed on the Edge Pro / `0x0015`).
+         * as the DJI original (reported for the Edge Pro / `0x0015` in inherited evidence).
          */
         private val XTRA_NAMES: Map<Int, String> = mapOf(
             0x0019 to "Xtra Atto",      // rebadged Osmo Nano
             0x0014 to "Xtra Edge",      // rebadged Osmo Action 4
-            0x0015 to "Xtra Edge Pro",  // rebadged Osmo Action 5 Pro — the only Xtra we've verified
+            0x0015 to "Xtra Edge Pro",  // rebadged Osmo Action 5 Pro; unverified in this project
             0x0020 to "Xtra Muse",      // rebadged Osmo Pocket 3
         )
 
@@ -116,8 +113,7 @@ data class CameraModel(
          * in as one global constant** — no per-model logic, no port passed from Java. So *every* Xtra
          * unit (identified hardware-side by its own OUI `EC:9E:EA`) gets 10004/no-poke, while genuine
          * DJI models keep 9004 + poke. If a guess is ever wrong the datalink retries [alternate] and
-         * logs which port answered. Only the Edge Pro is hardware-verified; the other Xtra rebadges are
-         * attempted-but-untested (no hardware to confirm).
+         * logs which port answered. Every Xtra profile is attempted-but-unverified in this project.
          */
         fun resolve(modelId: Int?, name: String?, brand: Brand = Brand.UNKNOWN): CameraModel {
             val base = byIdOrName(modelId, name)
@@ -125,7 +121,7 @@ data class CameraModel(
             val isEdgePro = modelId == 0x0015 || base.name.contains("Action 5")
             return base.copy(
                 name = XTRA_NAMES[modelId] ?: if (isEdgePro) "Xtra Edge Pro" else "Xtra ${base.name}",
-                datalinkPort = 10004, tcpPoke = false, verified = isEdgePro,
+                datalinkPort = 10004, tcpPoke = false, verified = false,
             )
         }
 
@@ -158,7 +154,7 @@ data class CameraModel(
             // Xtra product names map to their DJI twin (Atto=Nano, Edge=Action 4, Edge Pro=Action 5
             // Pro, Muse=Pocket 3). Matters for the mfr-data-less units (Pocket 3 / Muse) that only
             // resolve by name — a bare "xtra" must NOT fall through to 0x0015 or the Muse reads as an
-            // Edge Pro. "edgepro" is tested before "edge" so the Pro isn't swallowed by the Action 4.
+            // Edge Pro. "edgepro" is checked before "edge" so the Pro isn't swallowed by the Action 4.
             return when {
                 n.contains("pocket3") || n.contains("muse") -> BY_ID.getValue(0x0020)
                 // "pocket4p" before "pocket4", same reason as "edgepro" before "edge": the Pro's

@@ -6,9 +6,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The Xtra Edge Pro is a rebadged Osmo Action 5 Pro and advertises the **same** model id `0x0015`,
- * but 10004/no-poke was only ever confirmed on the Xtra — a rebrand firmware change, not a DJI one.
- * These pin the split so a genuine DJI unit never silently inherits the rebrand's datalink config.
+ * The Xtra Edge Pro is a rebadged Osmo Action 5 Pro and advertises the **same** model id `0x0015`.
+ * These tests pin the inherited profile split while keeping both models explicitly unverified in
+ * this project.
  */
 class CameraModelBrandTest {
 
@@ -29,17 +29,17 @@ class CameraModelBrandTest {
         val xtra = CameraModel.resolve(0x0015, "XtraEdgePro-C2D8", Brand.XTRA)
         val dji = CameraModel.resolve(0x0015, "OsmoAction5Pro-1234", Brand.DJI)
 
-        // Xtra: the confirmed rebrand quirk.
+        // Xtra: preserve the inherited rebrand quirk without claiming project hardware coverage.
         assertEquals("Xtra Edge Pro", xtra.name)
         assertEquals(10004, xtra.datalinkPort)
         assertFalse(xtra.tcpPoke)
-        assertTrue(xtra.verified)
+        assertFalse(xtra.verified)
 
-        // Genuine DJI: DJI-standard config, now tester-confirmed on real hardware.
+        // Genuine DJI: preserve its inherited DJI-standard config, also unverified here.
         assertEquals("Osmo Action 5 Pro", dji.name)
         assertEquals(9004, dji.datalinkPort)
         assertTrue(dji.tcpPoke)
-        assertTrue("a real Action 5 Pro browses + downloads on 9004 (tester-confirmed)", dji.verified)
+        assertFalse(dji.verified)
     }
 
     @Test
@@ -60,7 +60,7 @@ class CameraModelBrandTest {
         val nano = CameraModel.resolve(0x0019, "OsmoNano-C2D8", Brand.DJI)
         assertEquals(9004, nano.datalinkPort)
         assertTrue(nano.tcpPoke)
-        assertTrue(nano.verified)
+        assertFalse(nano.verified)
     }
 
     @Test
@@ -72,6 +72,17 @@ class CameraModelBrandTest {
         assertEquals(9004, camera.datalinkPort)
         assertTrue(camera.tcpPoke)
         assertTrue(camera.verified)
+    }
+
+    @Test
+    fun `only this project's two tested models are marked verified`() {
+        val tested = listOf(0x0017, 0x0022).map { CameraModel.resolve(it, null, Brand.DJI) }
+        assertTrue(tested.all(CameraModel::verified))
+
+        val compatibilityOnly = listOf(
+            0x0010, 0x0012, 0x0014, 0x0015, 0x0018, 0x0019, 0x0020, 0x0021, 0x0070, 0x007e,
+        ).map { CameraModel.resolve(it, null, Brand.DJI) }
+        assertTrue(compatibilityOnly.none(CameraModel::verified))
     }
 
     @Test

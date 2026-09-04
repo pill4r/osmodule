@@ -24,7 +24,8 @@ object BleConstants {
     // Model id: normally the first two manufacturer-payload bytes little-endian, but newer cameras
     // leave those at zero and carry a product type further into the payload — see [BleAdvert], which
     // folds both formats back into this one id space. Names here are for the scan log; offload
-    // capabilities per model live in CameraModel. Nano/Action 5 Pro verified on hardware.
+    // capabilities per model live in CameraModel. Nano/Action 5 Pro names are backed by the
+    // hardware evidence inherited from Osmosis, not current osmodule device coverage.
     val MODEL_NAMES: Map<Int, String> = mapOf(
         0x0006 to "OsmoAction",   // Action 1 — unconfirmed here, no hardware
         0x0010 to "OsmoAction2",

@@ -22,7 +22,7 @@ class BleAdvertTest {
     private val pocket4Pro = hex("000000ee0004bd6e5620da000010")
 
     /**
-     * A plain Osmo Pocket 4, from a tester's scan on 2026-08-08. Same payload *length* as its Pro
+     * A plain Osmo Pocket 4 fixture inherited from an earlier scan. Same payload *length* as its Pro
      * sibling above, but the classic format: model id populated, new-format flag clear.
      *
      *     OP4   21 00 00 be 00 00 ee 8d d9 a0 00 00 00 00   classic 0x0021, flag clear
@@ -37,8 +37,8 @@ class BleAdvertTest {
     private val nano = hex("190000c25a8abdc2d803")
 
     /**
-     * An Osmo Action 4 advert, from a tester's scan on 2026-08-24 — the session that first carried an
-     * Action 4 all the way to a downloaded file.
+     * An inherited Osmo Action 4 advert fixture. It keeps the classic-format parser covered without
+     * claiming that this project has run against Action 4 hardware.
      *
      *     14 00 fa aa bb cc dd ee ff     classic 0x0014, then the MAC in advertised order
      *
@@ -64,6 +64,7 @@ class BleAdvertTest {
         assertEquals("Osmo Pocket 4 Pro", m.name)
         assertEquals(9004, m.datalinkPort)
         assertTrue(m.tcpPoke)
+        assertTrue("Pocket 4 Pro media workflow was tested by this project", m.verified)
         assertFalse("two stores were listed, so storage must stay resolved per file", m.singleSdStorage)
     }
 
@@ -109,7 +110,7 @@ class BleAdvertTest {
     }
 
     /**
-     * The Pocket 4 resolves by id even though the tester had **renamed** the camera to `MEGG-OP4`.
+     * The Pocket 4 resolves by id even though the inherited fixture uses the renamed `MEGG-OP4`.
      * Nothing in that name matches the model table, so the name fallback would have failed outright;
      * only the advert's classic id identifies it. Real devices in the wild are renamed.
      */

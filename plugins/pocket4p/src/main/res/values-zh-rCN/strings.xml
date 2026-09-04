@@ -1,0 +1,13 @@
+<resources>
+    <string name="pocket4p_plugin_name">Pocket 4P 遥控</string>
+    <string name="pocket4p_plugin_ready">Pocket 4P 遥控已安装，并适用于 Osmo Pocket 4 Pro。\n\n请返回 osmodule，连接相机后点按设备状态旁的“远控”。</string>
+    <string name="pocket4p_permissions_explanation">第 1/2 步 · 主应用释放素材会话后，本插件会重新连接相机的本地 Wi-Fi。Android 要求授予“附近的 Wi-Fi”权限才能建立此连接。</string>
+    <string name="pocket4p_permissions_grant">允许连接相机 Wi-Fi</string>
+    <string name="pocket4p_permission_granted">已授权</string>
+    <string name="pocket4p_permission_status">相机 Wi-Fi：%1$s</string>
+    <string name="pocket4p_permission_state_granted">已授权</string>
+    <string name="pocket4p_permission_state_missing">未授权</string>
+    <string name="pocket4p_autostart_explanation">第 2/2 步 · HyperOS 还需要允许本插件自启动，主应用才能稳定唤起它。自启动不是 Android 运行时权限，必须在系统页面中手动确认。</string>
+    <string name="pocket4p_autostart_settings">前往 HyperOS 允许自启动</string>
+    <string name="pocket4p_permissions_settings">打开应用权限设置</string>
+</resources>

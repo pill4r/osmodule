@@ -31,6 +31,35 @@ class OfficialPluginCatalogTest {
     }
 
     @Test
+    fun acceptsOnlyCatalogedPocket4pIdentityAndCapabilities() {
+        val descriptor = PluginDescriptor(
+            id = PluginContract.POCKET4P_PLUGIN_ID,
+            name = "Pocket 4P RC",
+            version = 1,
+            protocolMin = 1,
+            protocolMax = 1,
+            capabilities = setOf(
+                PluginContract.CAPABILITY_POCKET4P_PANEL,
+                PluginContract.CAPABILITY_CAMERA_SESSION_OWNER,
+            ),
+        )
+
+        assertNull(OfficialPluginCatalog.validationIssue(PluginContract.POCKET4P_PACKAGE, descriptor))
+        assertNotNull(
+            OfficialPluginCatalog.validationIssue(
+                PluginContract.POCKET4P_PACKAGE,
+                descriptor.copy(capabilities = setOf(PluginContract.CAPABILITY_POCKET4P_PANEL)),
+            ),
+        )
+        assertNotNull(
+            OfficialPluginCatalog.validationIssue(
+                PluginContract.POCKET4P_PACKAGE,
+                descriptor.copy(capabilities = descriptor.capabilities + "camera.unreviewed"),
+            ),
+        )
+    }
+
+    @Test
     fun everyOfficialPluginUsesARepositoryReleaseApk() {
         OfficialPluginCatalog.policies.forEach { policy ->
             assertTrue(

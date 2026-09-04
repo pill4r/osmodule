@@ -1,0 +1,13 @@
+<resources>
+    <string name="pocket4p_plugin_name">Pocket 4P RC</string>
+    <string name="pocket4p_plugin_ready">Pocket 4P RC is installed and supports Osmo Pocket 4 Pro.\n\nReturn to osmodule, connect the camera, then tap Remote beside its status.</string>
+    <string name="pocket4p_permissions_explanation">Step 1 of 2 · This plugin reconnects to the camera’s local Wi-Fi after Base releases the media session. Android requires Nearby Wi-Fi permission for that connection.</string>
+    <string name="pocket4p_permissions_grant">Allow camera Wi-Fi</string>
+    <string name="pocket4p_permission_granted">Granted</string>
+    <string name="pocket4p_permission_status">Camera Wi-Fi: %1$s</string>
+    <string name="pocket4p_permission_state_granted">granted</string>
+    <string name="pocket4p_permission_state_missing">not granted</string>
+    <string name="pocket4p_autostart_explanation">Step 2 of 2 · HyperOS also requires Autostart for Base to open this plugin reliably. Android does not expose this as a runtime permission, so confirm it manually in the system screen.</string>
+    <string name="pocket4p_autostart_settings">Allow Autostart in HyperOS</string>
+    <string name="pocket4p_permissions_settings">Open app permission settings</string>
+</resources>

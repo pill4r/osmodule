@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- The plugin reconnects to the camera SoftAP after Base releases its media session. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="dev.konraditurbe.osmosis.permission.CAMERA_SESSION" />
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="tiramisu" />
+
+    <queries>
+        <provider android:authorities="dev.konraditurbe.osmosis.camera-session" />
+    </queries>
+
+    <application
+        android:name=".Pocket4pPluginApp"
+        android:allowBackup="false"
+        android:label="@string/pocket4p_plugin_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Material3.DayNight.NoActionBar">
+
+        <activity
+            android:name=".Pocket4pPluginHomeActivity"
+            android:exported="true"
+            android:permission="dev.konraditurbe.osmosis.permission.BIND_PLUGIN">
+            <intent-filter>
+                <action android:name="dev.konraditurbe.osmosis.plugin.MANAGE_PERMISSIONS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Synchronous first-launch IPC; only the same-signature Base APK may call it. -->
+        <provider
+            android:name="dev.konraditurbe.osmosis.plugin.PluginBootstrapProvider"
+            android:authorities="${applicationId}.bootstrap"
+            android:exported="true"
+            android:permission="dev.konraditurbe.osmosis.permission.BIND_PLUGIN"
+            android:grantUriPermissions="false" />
+
+        <service
+            android:name=".Pocket4pPluginService"
+            android:exported="true"
+            android:permission="dev.konraditurbe.osmosis.permission.BIND_PLUGIN">
+            <intent-filter>
+                <action android:name="dev.konraditurbe.osmosis.plugin.BIND" />
+            </intent-filter>
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.ID" android:value="pocket4p-control" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.NAME" android:value="Pocket 4P RC" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.VERSION" android:value="1" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.PROTOCOL_MIN" android:value="1" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.PROTOCOL_MAX" android:value="1" />
+            <meta-data
+                android:name="dev.konraditurbe.osmosis.plugin.CAPABILITIES"
+                android:value="camera.pocket4p.remote-panel,camera.session.owner" />
+        </service>
+    </application>
+</manifest>

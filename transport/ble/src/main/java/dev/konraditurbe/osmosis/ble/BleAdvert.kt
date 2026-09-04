@@ -95,8 +95,8 @@ object BleAdvert {
      * The classic id: payload bytes [0:2] little-endian.
      *
      * Only the low byte actually varies; we keep the 16-bit read this app has always used, which
-     * agrees on every camera seen so far (byte 1 is zero on all of them) and avoids churning ids
-     * that are hardware-verified. Zero is not a model — it is what the new format leaves behind.
+     * agrees with the retained capture corpus (byte 1 is zero throughout) and avoids churning ids
+     * backed by existing evidence. Zero is not a model — it is what the new format leaves behind.
      */
     private fun legacyModelId(payload: ByteArray): Int? {
         if (payload.size < 2) return null

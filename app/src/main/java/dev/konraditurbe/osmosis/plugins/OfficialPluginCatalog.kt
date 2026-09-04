@@ -40,6 +40,19 @@ internal object OfficialPluginCatalog {
                 PluginContract.CAPABILITY_CAMERA_SESSION_OWNER,
             ),
         ),
+        Policy(
+            packageName = PluginContract.POCKET4P_PACKAGE,
+            pluginId = PluginContract.POCKET4P_PLUGIN_ID,
+            releaseApkUrl = "$LATEST_RELEASE_BASE/pocket4p-release.apk",
+            requiredCapabilities = setOf(
+                PluginContract.CAPABILITY_POCKET4P_PANEL,
+                PluginContract.CAPABILITY_CAMERA_SESSION_OWNER,
+            ),
+            allowedCapabilities = setOf(
+                PluginContract.CAPABILITY_POCKET4P_PANEL,
+                PluginContract.CAPABILITY_CAMERA_SESSION_OWNER,
+            ),
+        ),
     )
 
     fun policyFor(packageName: String): Policy? = policies.firstOrNull {

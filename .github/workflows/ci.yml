@@ -46,6 +46,7 @@ jobs:
           :app:assembleDebug
           :plugins:panorama360:assembleDebug
           :plugins:rsdk:assembleDebug
+          :plugins:pocket4p:assembleDebug
 
       - name: Upload test reports
         if: ${{ !cancelled() }}
@@ -86,10 +87,18 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload R-SDK Debug APK
+      - name: Upload Osmo 360 RC Debug APK
         uses: actions/upload-artifact@v7
         with:
-          name: osmodule-rsdk-debug-apk-${{ github.run_attempt }}
+          name: osmodule-osmo360-rc-debug-apk-${{ github.run_attempt }}
           path: plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Pocket 4P Debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: osmodule-pocket4p-debug-apk-${{ github.run_attempt }}
+          path: plugins/pocket4p/build/outputs/apk/debug/pocket4p-debug.apk
           if-no-files-found: error
           retention-days: 14

@@ -14,7 +14,7 @@ plugins {
 // not depend on a package having already been published.
 ext.pluginSdkVersion = providers.gradleProperty('pluginSdkVersion').get()
 
-configure([project(':plugins:rsdk'), project(':plugins:panorama360')]) {
+configure([project(':plugins:rsdk'), project(':plugins:panorama360'), project(':plugins:pocket4p')]) {
     configurations.configureEach {
         resolutionStrategy.dependencySubstitution {
             substitute module('dev.konraditurbe.osmodule:plugin-sdk') using project(':core:plugin-api')
