@@ -14,11 +14,13 @@ object Capabilities {
     const val RSDK_REMOTE_PANEL = "camera.rsdk.remote-panel"
     const val RSDK_CAMERA_STATUS = "camera.rsdk.status"
     const val RSDK_GPS_SYNC = "camera.rsdk.gps-sync"
+    const val POCKET4P_REMOTE_PANEL = "camera.pocket4p.remote-panel"
 }
 
 /** Stable model keys used by module metadata without depending on the BLE transport module. */
 object DeviceModels {
     const val OSMO_360 = "osmo360"
+    const val OSMO_POCKET_4_PRO = "osmopocket4pro"
 }
 
 enum class ModuleDelivery {

@@ -12,6 +12,16 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Material3.DayNight.NoActionBar">
 
+        <activity
+            android:name=".PanoramaPluginHomeActivity"
+            android:exported="true"
+            android:permission="dev.konraditurbe.osmosis.permission.BIND_PLUGIN">
+            <intent-filter>
+                <action android:name="dev.konraditurbe.osmosis.plugin.MANAGE_PERMISSIONS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Synchronous first-launch IPC; only the same-signature Base APK may call it. -->
         <provider
             android:name="dev.konraditurbe.osmosis.plugin.PluginBootstrapProvider"

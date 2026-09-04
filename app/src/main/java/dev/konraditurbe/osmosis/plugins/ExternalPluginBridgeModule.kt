@@ -23,6 +23,13 @@ import dev.konraditurbe.osmosis.modules.DeviceModels
 import dev.konraditurbe.osmosis.modules.PanoramaVideoRequest
 import dev.konraditurbe.osmosis.modules.PanoramaVideoViewerLauncher
 import dev.konraditurbe.osmosis.plugin.PluginContract
+import java.util.concurrent.atomic.AtomicLong
+
+internal fun externalRemotePanelCapability(deviceModel: String): String? = when (deviceModel) {
+    DeviceModels.OSMO_360 -> PluginContract.CAPABILITY_RSDK_PANEL
+    DeviceModels.OSMO_POCKET_4_PRO -> PluginContract.CAPABILITY_POCKET4P_PANEL
+    else -> null
+}
 
 class ExternalPluginBridgeModule : AppModule {
     override val descriptor = ModuleDescriptor(
@@ -34,7 +41,7 @@ class ExternalPluginBridgeModule : AppModule {
 
     override fun install(scope: ModuleScope) {
         scope.bind(ModuleManagementLauncher::class.java, BaseModuleManagementLauncher())
-        scope.bind(CameraRemotePanelLauncher::class.java, ExternalRsdkPanelLauncher())
+        scope.bind(CameraRemotePanelLauncher::class.java, ExternalCameraRemotePanelLauncher())
         scope.bind(PanoramaVideoViewerLauncher::class.java, ExternalPanoramaViewerLauncher())
         scope.bind(CameraSessionGate::class.java, ExternalCameraSessionGate())
     }
@@ -71,22 +78,34 @@ private class BaseModuleManagementLauncher : ModuleManagementLauncher {
             .filter { it.id != "external-plugin-bridge" && it.supports(deviceModel) }
             .mapNotNull { module -> module.deviceStatus(context) }
             .toList()
-        val external = if (deviceModel == DeviceModels.OSMO_360) listOf(
-            externalStatus(
-                context,
-                PluginContract.PANORAMA_PACKAGE,
-                PluginContract.PANORAMA_PLUGIN_ID,
-                R.string.module_panorama_name,
-                R.string.module_panorama_summary,
-            ),
-            externalStatus(
-                context,
-                PluginContract.RSDK_PACKAGE,
-                PluginContract.RSDK_PLUGIN_ID,
-                R.string.module_rsdk_name,
-                R.string.module_rsdk_summary,
-            ),
-        ) else emptyList()
+        val external = when (deviceModel) {
+            DeviceModels.OSMO_360 -> listOf(
+                externalStatus(
+                    context,
+                    PluginContract.PANORAMA_PACKAGE,
+                    PluginContract.PANORAMA_PLUGIN_ID,
+                    R.string.module_panorama_name,
+                    R.string.module_panorama_summary,
+                ),
+                externalStatus(
+                    context,
+                    PluginContract.RSDK_PACKAGE,
+                    PluginContract.RSDK_PLUGIN_ID,
+                    R.string.module_rsdk_name,
+                    R.string.module_rsdk_summary,
+                ),
+            )
+            DeviceModels.OSMO_POCKET_4_PRO -> listOf(
+                externalStatus(
+                    context,
+                    PluginContract.POCKET4P_PACKAGE,
+                    PluginContract.POCKET4P_PLUGIN_ID,
+                    R.string.module_pocket4p_name,
+                    R.string.module_pocket4p_summary,
+                ),
+            )
+            else -> emptyList()
+        }
         return bundled + external
     }
 
@@ -98,10 +117,7 @@ private class BaseModuleManagementLauncher : ModuleManagementLauncher {
         description: Int,
     ): DeviceModuleStatus {
         val record = ExternalPluginRegistry.packageRecord(packageName)
-        val packageInstalled = runCatching {
-            @Suppress("DEPRECATION")
-            context.packageManager.getPackageInfo(packageName, 0)
-        }.isSuccess
+        val packageInstalled = ExternalPluginRegistry.isPackageInstalled(packageName)
         return DeviceModuleStatus(
             id = moduleId,
             name = context.getString(name),
@@ -158,16 +174,40 @@ private class ExternalPanoramaViewerLauncher : PanoramaVideoViewerLauncher {
     }
 }
 
-private class ExternalRsdkPanelLauncher : CameraRemotePanelLauncher {
-    override fun isAvailable(context: Context): Boolean =
-        ExternalPluginRegistry.hasCapability(PluginContract.CAPABILITY_RSDK_PANEL)
+private class ExternalCameraRemotePanelLauncher : CameraRemotePanelLauncher {
+    private val launchGeneration = AtomicLong()
 
-    override fun open(context: Context, target: CameraRemoteTarget): Boolean {
-        if (!MAC.matches(target.address)) return false
-        if (target.deviceModel != DeviceModels.OSMO_360) return false
+    override fun isAvailable(context: Context): Boolean =
+        ExternalPluginRegistry.hasCapability(PluginContract.CAPABILITY_RSDK_PANEL) ||
+            ExternalPluginRegistry.hasCapability(PluginContract.CAPABILITY_POCKET4P_PANEL)
+
+    override fun isAvailable(context: Context, deviceModel: String): Boolean =
+        externalRemotePanelCapability(deviceModel)?.let(ExternalPluginRegistry::hasCapability) == true
+
+    override fun open(context: Context, target: CameraRemoteTarget): Boolean =
+        open(context, target) {}
+
+    override fun open(
+        context: Context,
+        target: CameraRemoteTarget,
+        onComplete: (opened: Boolean) -> Unit,
+    ): Boolean {
+        val generation = launchGeneration.incrementAndGet()
+        ExternalPluginRegistry.cancelPendingPanelLaunch(CAMERA_REMOTE_LAUNCH_GROUP)
+        if (!MAC.matches(target.address)) {
+            onComplete(false)
+            return false
+        }
+        val capability = externalRemotePanelCapability(target.deviceModel)
+        if (capability == null) {
+            onComplete(false)
+            return false
+        }
+        val notificationContext = context.applicationContext
         val request = Bundle().apply {
             putString(PluginContract.KEY_CAMERA_ADDRESS, target.address.uppercase())
             putString(PluginContract.KEY_CAMERA_NAME, target.name)
+            putString(PluginContract.KEY_CAMERA_DEVICE_MODEL, target.deviceModel)
             putBoolean(PluginContract.KEY_CAMERA_IN_RANGE, target.inRange)
             putString(PluginContract.KEY_CAMERA_WIFI_SSID, target.wifiSsid)
             putString(PluginContract.KEY_CAMERA_WIFI_PASSPHRASE, target.wifiPassphrase)
@@ -184,13 +224,28 @@ private class ExternalRsdkPanelLauncher : CameraRemotePanelLauncher {
             )
         }
         return ExternalPluginRegistry.openPanel(
-            context,
-            PluginContract.CAPABILITY_RSDK_PANEL,
-            request,
-        ) { message -> Toast.makeText(context.applicationContext, message, Toast.LENGTH_LONG).show() }
+            context = context,
+            capability = capability,
+            request = request,
+            launchGroup = CAMERA_REMOTE_LAUNCH_GROUP,
+            onFailure = { message ->
+                if (launchGeneration.get() == generation) {
+                    Toast.makeText(notificationContext, message, Toast.LENGTH_LONG).show()
+                }
+            },
+            onComplete = { opened ->
+                if (launchGeneration.get() == generation) onComplete(opened)
+            },
+        )
+    }
+
+    override fun cancelPending() {
+        launchGeneration.incrementAndGet()
+        ExternalPluginRegistry.cancelPendingPanelLaunch(CAMERA_REMOTE_LAUNCH_GROUP)
     }
 
     private companion object {
+        const val CAMERA_REMOTE_LAUNCH_GROUP = "camera-remote-panel"
         val MAC = Regex("^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$")
     }
 }

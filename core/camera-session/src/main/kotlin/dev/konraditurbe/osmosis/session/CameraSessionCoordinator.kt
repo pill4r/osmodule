@@ -4,6 +4,7 @@ package dev.konraditurbe.osmosis.session
 enum class CameraSessionPurpose {
     MEDIA_OFFLOAD,
     RSDK_CONTROL,
+    POCKET4P_CONTROL,
 }
 
 data class CameraSessionSnapshot(

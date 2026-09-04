@@ -21,5 +21,9 @@ class PluginDescriptorTest {
             PluginContract.bootstrapAuthority(PluginContract.PANORAMA_PACKAGE) ==
                 "dev.konraditurbe.osmosis.plugin.panorama360.bootstrap",
         )
+        assertTrue(
+            PluginContract.bootstrapAuthority(PluginContract.POCKET4P_PACKAGE) ==
+                "dev.konraditurbe.osmosis.plugin.pocket4p.bootstrap",
+        )
     }
 }

@@ -22,7 +22,23 @@ data class CameraRemoteTarget(
 /** Optional UI entry point. The implementation may live in another signed APK. */
 interface CameraRemotePanelLauncher {
     fun isAvailable(context: Context): Boolean = true
+    /** Target-aware availability for launchers that route more than one camera-specific plugin. */
+    fun isAvailable(context: Context, deviceModel: String): Boolean = isAvailable(context)
     fun open(context: Context, target: CameraRemoteTarget): Boolean
+
+    /**
+     * Opens the panel and reports whether the launch itself completed. Implementations with an
+     * asynchronous bridge should invoke [onComplete] only for the still-current launch generation;
+     * `true` means the destination UI was dispatched, not merely that bootstrap was accepted.
+     */
+    fun open(
+        context: Context,
+        target: CameraRemoteTarget,
+        onComplete: (opened: Boolean) -> Unit,
+    ): Boolean = open(context, target).also(onComplete)
+
+    /** Invalidates delayed work so it cannot open a panel for an Activity or target that is stale. */
+    fun cancelPending() = Unit
 }
 
 enum class ModuleInstallationState {

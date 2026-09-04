@@ -1,3 +1,8 @@
 <resources>
     <string name="panorama_plugin_name">osmodule 360 Viewer</string>
+    <string name="panorama_plugin_ready">osmodule 360 Viewer is installed.</string>
+    <string name="panorama_no_runtime_permissions">This viewer does not require Bluetooth, Wi-Fi discovery or location runtime permissions.</string>
+    <string name="panorama_autostart_explanation">HyperOS requires Autostart for Base to open this viewer reliably. Android does not expose this as a runtime permission, so confirm it manually in the system screen.</string>
+    <string name="panorama_autostart_settings">Allow Autostart in HyperOS</string>
+    <string name="panorama_app_settings">Open app settings</string>
 </resources>

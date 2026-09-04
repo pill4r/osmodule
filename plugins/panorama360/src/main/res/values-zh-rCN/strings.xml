@@ -1,3 +1,8 @@
 <resources>
     <string name="panorama_plugin_name">osmodule 360° 全景查看器</string>
+    <string name="panorama_plugin_ready">osmodule 360° 全景查看器已安装。</string>
+    <string name="panorama_no_runtime_permissions">此查看器不需要蓝牙、Wi-Fi 扫描或位置运行时权限。</string>
+    <string name="panorama_autostart_explanation">HyperOS 需要允许本查看器自启动，主应用才能稳定唤起它。自启动不是 Android 运行时权限，必须在系统页面中手动确认。</string>
+    <string name="panorama_autostart_settings">前往 HyperOS 允许自启动</string>
+    <string name="panorama_app_settings">打开应用设置</string>
 </resources>

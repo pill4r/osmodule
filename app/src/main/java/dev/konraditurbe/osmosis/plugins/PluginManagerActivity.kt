@@ -1,6 +1,7 @@
 package dev.konraditurbe.osmosis.plugins
 
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.net.Uri
@@ -57,15 +58,20 @@ class PluginManagerActivity : AppCompatActivity() {
         val installedPackage = pendingInstallPackage
         pendingInstallFile = null
         pendingInstallPackage = null
-        render()
-        // Some OEM package installers report RESULT_CANCELED even after a successful install.
-        if (installedPackage != null) {
-            list.postDelayed({ promptPluginPermissionsIfInstalled(installedPackage) }, 500)
+        ExternalPluginRegistry.refreshAsync {
+            if (isFinishing || isDestroyed) return@refreshAsync
+            render()
+            // Some OEM package installers report RESULT_CANCELED even after a successful install.
+            if (installedPackage != null) {
+                list.postDelayed({ promptPluginPermissionsIfInstalled(installedPackage) }, 500)
+            }
         }
     }
 
     private val packageUninstaller = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        render()
+        ExternalPluginRegistry.refreshAsync {
+            if (!isFinishing && !isDestroyed) render()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +107,18 @@ class PluginManagerActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (::list.isInitialized) render()
+        if (::list.isInitialized) {
+            render()
+            ExternalPluginRegistry.refreshAsync {
+                if (!isFinishing && !isDestroyed) render()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        KNOWN_PLUGINS.mapNotNull { it.openCapability }
+            .forEach(ExternalPluginRegistry::cancelPendingPanelLaunch)
+        super.onDestroy()
     }
 
     private fun render() {
@@ -230,7 +247,10 @@ class PluginManagerActivity : AppCompatActivity() {
         })
         if (record?.compatible == true && known.hasPermissionCenter) {
             actions.addView(MaterialButton(this).apply {
-                text = getString(R.string.module_permissions)
+                text = getString(
+                    if (isXiaomiFamilyDevice()) R.string.module_permissions_and_autostart
+                    else R.string.module_permissions,
+                )
                 setOnClickListener { openPluginPermissions(known.packageName) }
             })
         }
@@ -325,6 +345,7 @@ class PluginManagerActivity : AppCompatActivity() {
             models.map { model ->
                 when (model) {
                     DeviceModels.OSMO_360 -> getString(R.string.module_osmo360)
+                    DeviceModels.OSMO_POCKET_4_PRO -> getString(R.string.module_pocket4p)
                     else -> model
                 }
             }.joinToString()
@@ -338,6 +359,14 @@ class PluginManagerActivity : AppCompatActivity() {
     }
 
     private fun downloadFromGitHub(expectedPackage: String) {
+        if (isDebugHostBuild()) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.module_debug_signing_title)
+                .setMessage(R.string.module_debug_github_signing_explanation)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return
+        }
         val source = OfficialPluginCatalog.policyFor(expectedPackage)?.releaseApkUrl
         if (source == null) {
             showDownloadError(getString(R.string.module_download_invalid_source))
@@ -378,9 +407,8 @@ class PluginManagerActivity : AppCompatActivity() {
             .onFailure { showError(it.message ?: getString(R.string.module_remove_failed)) }
     }
 
-    @Suppress("DEPRECATION")
     private fun isPackageInstalled(packageName: String): Boolean =
-        runCatching { packageManager.getPackageInfo(packageName, 0) }.isSuccess
+        ExternalPluginRegistry.isPackageInstalled(packageName)
 
     private fun stageAndVerify(uri: Uri, expectedPackage: String) {
         Thread {
@@ -394,11 +422,15 @@ class PluginManagerActivity : AppCompatActivity() {
                 apk to ExternalPluginRegistry.verifyArchive(apk, expectedPackage)
             }
             runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
                 result.onSuccess { (apk, check) ->
                     if (check.accepted) requestPackageInstall(apk, expectedPackage)
                     else showError(check.reason ?: getString(R.string.module_invalid_apk))
                 }.onFailure { showError(it.message ?: getString(R.string.module_copy_failed)) }
             }
+        }.apply {
+            name = "osmodule-plugin-local-verify"
+            isDaemon = true
         }.start()
     }
 
@@ -510,13 +542,24 @@ class PluginManagerActivity : AppCompatActivity() {
 
     private fun openPluginAutostartSettings(pluginPackage: String) {
         val autostart = Intent("miui.intent.action.OP_AUTO_START").apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
             setPackage("com.miui.securitycenter")
             putExtra("extra_pkgname", pluginPackage)
         }
-        if (runCatching { startActivity(autostart) }.isFailure) {
+        val permissionEditor = Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            setPackage("com.miui.securitycenter")
+            putExtra("extra_pkgname", pluginPackage)
+        }
+        if (runCatching { startActivity(autostart) }.isFailure &&
+            runCatching { startActivity(permissionEditor) }.isFailure
+        ) {
             openPluginAppInfo(pluginPackage)
         }
     }
+
+    private fun isDebugHostBuild(): Boolean =
+        applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 
     private fun isXiaomiFamilyDevice(): Boolean =
         Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true) ||
@@ -551,12 +594,20 @@ class PluginManagerActivity : AppCompatActivity() {
                 true,
             ),
             KnownPlugin(
+                PluginContract.POCKET4P_PACKAGE,
+                R.string.module_pocket4p_name,
+                R.string.module_pocket4p_summary,
+                PluginContract.CAPABILITY_POCKET4P_PANEL,
+                setOf(DeviceModels.OSMO_POCKET_4_PRO),
+                true,
+            ),
+            KnownPlugin(
                 PluginContract.PANORAMA_PACKAGE,
                 R.string.module_panorama_name,
                 R.string.module_panorama_summary,
                 null,
                 setOf(DeviceModels.OSMO_360),
-                false,
+                true,
             ),
         )
     }

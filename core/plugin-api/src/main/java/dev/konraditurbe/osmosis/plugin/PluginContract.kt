@@ -36,6 +36,7 @@ object PluginContract {
     const val KEY_CAPABILITIES = "capabilities"
     const val KEY_CAMERA_ADDRESS = "camera_address"
     const val KEY_CAMERA_NAME = "camera_name"
+    const val KEY_CAMERA_DEVICE_MODEL = "camera_device_model"
     const val KEY_CAMERA_IN_RANGE = "camera_in_range"
     const val KEY_CAMERA_WIFI_SSID = "camera_wifi_ssid"
     const val KEY_CAMERA_WIFI_PASSPHRASE = "camera_wifi_passphrase"
@@ -54,6 +55,8 @@ object PluginContract {
 
     const val RSDK_PACKAGE = "dev.konraditurbe.osmosis.plugin.rsdk"
     const val RSDK_PLUGIN_ID = "rsdk-control"
+    const val POCKET4P_PACKAGE = "dev.konraditurbe.osmosis.plugin.pocket4p"
+    const val POCKET4P_PLUGIN_ID = "pocket4p-control"
     const val PANORAMA_PACKAGE = "dev.konraditurbe.osmosis.plugin.panorama360"
     const val PANORAMA_PLUGIN_ID = "panorama360"
 
@@ -61,6 +64,7 @@ object PluginContract {
     const val CAPABILITY_RSDK_REMOTE_CONTROL = "camera.rsdk.remote-control"
     const val CAPABILITY_RSDK_STATUS = "camera.rsdk.status"
     const val CAPABILITY_RSDK_GPS = "camera.rsdk.gps-sync"
+    const val CAPABILITY_POCKET4P_PANEL = "camera.pocket4p.remote-panel"
     const val CAPABILITY_CAMERA_SESSION_OWNER = "camera.session.owner"
     const val CAPABILITY_MEDIA_360_VIEW = "camera.media.360-view"
 }

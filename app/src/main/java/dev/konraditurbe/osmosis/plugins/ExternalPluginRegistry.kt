@@ -1,11 +1,15 @@
 package dev.konraditurbe.osmosis.plugins
 
+import android.app.Activity
 import android.app.ActivityOptions
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
@@ -21,8 +25,18 @@ import dev.konraditurbe.osmosis.plugin.IOsmosisPlugin
 import dev.konraditurbe.osmosis.plugin.PluginContract
 import dev.konraditurbe.osmosis.plugin.PluginDescriptor
 import java.io.File
+import java.lang.ref.WeakReference
 import java.security.MessageDigest
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.FutureTask
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.ConcurrentHashMap
 
 data class ExternalPluginRecord(
     val packageName: String,
@@ -42,6 +56,11 @@ data class PluginArchiveCheck(
 
 data class ActiveExternalCameraSession(val pluginName: String, val cameraName: String?)
 
+private data class PluginCatalogSnapshot(
+    val records: List<ExternalPluginRecord> = emptyList(),
+    val installedPackages: Set<String> = emptySet(),
+)
+
 /**
  * Base-side plugin catalog and one-shot Binder launcher.
  *
@@ -51,27 +70,59 @@ data class ActiveExternalCameraSession(val pluginName: String, val cameraName: S
  */
 object ExternalPluginRegistry {
     private const val TAG = "osmodulePlugin"
+    private const val PLUGIN_BOOTSTRAP_TIMEOUT_MS = 5_000L
+    private const val PLUGIN_BIND_TIMEOUT_MS = 5_000L
+    private const val PLUGIN_IPC_THREADS = 2
+    private const val PLUGIN_IPC_QUEUE_CAPACITY = 16
+    private const val PLUGIN_CATALOG_QUEUE_CAPACITY = 8
     private lateinit var appContext: Context
     private val main = Handler(Looper.getMainLooper())
+    private val pendingPanelLaunches = ConcurrentHashMap<String, PluginAsyncOperationSlot<Unit>>()
+    private val ipcThreadNumber = AtomicInteger()
+    private val catalogThreadNumber = AtomicInteger()
+    private val timerThreadNumber = AtomicInteger()
+    private val packageReceiverRegistered = AtomicBoolean(false)
+    private val ipcWorker = ThreadPoolExecutor(
+        PLUGIN_IPC_THREADS,
+        PLUGIN_IPC_THREADS,
+        30L,
+        TimeUnit.SECONDS,
+        ArrayBlockingQueue(PLUGIN_IPC_QUEUE_CAPACITY),
+        namedDaemonThreadFactory("osmodule-plugin-ipc", ipcThreadNumber),
+        ThreadPoolExecutor.AbortPolicy(),
+    ).apply { allowCoreThreadTimeOut(true) }
+    private val catalogWorker = ThreadPoolExecutor(
+        1,
+        1,
+        30L,
+        TimeUnit.SECONDS,
+        ArrayBlockingQueue(PLUGIN_CATALOG_QUEUE_CAPACITY),
+        namedDaemonThreadFactory("osmodule-plugin-catalog", catalogThreadNumber),
+        ThreadPoolExecutor.AbortPolicy(),
+    ).apply { allowCoreThreadTimeOut(true) }
+    private val timeoutWorker = ScheduledThreadPoolExecutor(
+        1,
+        namedDaemonThreadFactory("osmodule-plugin-timeout", timerThreadNumber),
+    ).apply { removeOnCancelPolicy = true }
 
     @Volatile
-    private var records: List<ExternalPluginRecord> = emptyList()
+    private var cachedCatalog = PluginCatalogSnapshot()
 
     fun initialize(context: Context) {
         appContext = context.applicationContext
-        refresh()
+        registerPackageChangeReceiver()
+        refreshAsync()
     }
 
-    fun refresh(): List<ExternalPluginRecord> {
-        if (!::appContext.isInitialized) return emptyList()
-        val pm = appContext.packageManager
-        val hostSigners = signerDigests(packageInfo(pm, appContext.packageName))
+    private fun discoverCatalog(context: Context): PluginCatalogSnapshot {
+        val pm = context.packageManager
+        val hostSigners = signerDigests(packageInfo(pm, context.packageName))
         @Suppress("DEPRECATION")
         val resolved = pm.queryIntentServices(
             Intent(PluginContract.BIND_ACTION),
             PackageManager.GET_META_DATA,
         )
-        records = resolved.mapNotNull { resolve ->
+        val discoveredRecords = resolved.mapNotNull { resolve ->
             val service = resolve.serviceInfo ?: return@mapNotNull null
             val component = ComponentName(service.packageName, service.name)
             val descriptor = descriptorFromMetadata(service)
@@ -98,17 +149,38 @@ object ExternalPluginRegistry {
             }
             ExternalPluginRecord(service.packageName, component, descriptor, trusted, issue)
         }.sortedWith(compareBy({ it.descriptor?.name ?: it.packageName }, { it.packageName }))
-        return records
+        val installedPackages = OfficialPluginCatalog.policies.mapNotNullTo(linkedSetOf()) { policy ->
+            policy.packageName.takeIf { packageInfo(pm, it) != null }
+        }
+        return PluginCatalogSnapshot(discoveredRecords, installedPackages)
     }
 
-    fun catalog(): List<ExternalPluginRecord> = records
+    fun catalog(): List<ExternalPluginRecord> = cachedCatalog.records
 
-    fun packageRecord(packageName: String): ExternalPluginRecord? = refresh().firstOrNull {
+    fun packageRecord(packageName: String): ExternalPluginRecord? = cachedCatalog.records.firstOrNull {
         it.packageName == packageName
     }
 
-    fun hasCapability(capability: String): Boolean = refresh().any {
+    fun hasCapability(capability: String): Boolean = cachedCatalog.records.any {
         it.compatible && capability in it.descriptor!!.capabilities
+    }
+
+    fun isPackageInstalled(packageName: String): Boolean =
+        packageName in cachedCatalog.installedPackages
+
+    /** Refreshes the read-only catalog cache without ever querying PackageManager on the caller. */
+    fun refreshAsync(onComplete: ((List<ExternalPluginRecord>) -> Unit)? = null): Boolean {
+        if (!::appContext.isInitialized) return false
+        val context = appContext
+        return executeCatalog(
+            onRejected = {
+                onComplete?.let { callback -> main.post { callback(cachedCatalog.records) } }
+            },
+        ) {
+            val discovered = runCatching { discoverCatalog(context) }.getOrNull()
+            if (discovered != null) cachedCatalog = discovered
+            onComplete?.let { callback -> main.post { callback(cachedCatalog.records) } }
+        }
     }
 
     /**
@@ -121,29 +193,57 @@ object ExternalPluginRegistry {
         pluginPackage: String,
         onFailure: (String) -> Unit,
     ): Boolean {
-        val plugin = packageRecord(pluginPackage)
-        if (plugin?.compatible != true) {
-            main.post { onFailure(plugin?.issue ?: "Plugin is not installed or compatible") }
-            return false
-        }
+        val applicationContext = context.applicationContext
+        val launchContext = WeakReference(context)
         val intent = Intent(PluginContract.PERMISSION_CENTER_ACTION)
             .setPackage(pluginPackage)
             .addCategory(Intent.CATEGORY_DEFAULT)
             .putExtra(PluginContract.KEY_REQUEST_PERMISSIONS, true)
-        val activity = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
-            ?.activityInfo
-        if (activity == null || !activity.exported || activity.packageName != pluginPackage ||
-            activity.permission != PluginContract.BIND_PERMISSION
-        ) {
-            main.post { onFailure("Plugin permission center is missing or not protected") }
-            return false
+
+        fun fail(message: String) {
+            main.post {
+                val target = launchContext.get()
+                if (target is Activity &&
+                    (target.isFinishing || target.isDestroyed || !target.hasWindowFocus())
+                ) return@post
+                runCatching { onFailure(message) }
+                    .onFailure { Log.e(TAG, "Plugin permission failure callback threw", it) }
+            }
         }
-        return runCatching {
-            context.startActivity(intent)
-            true
-        }.getOrElse { error ->
-            main.post { onFailure(error.message ?: "Unable to open plugin permissions") }
-            false
+
+        return executeCatalog(
+            onRejected = { fail("Plugin catalog worker is busy") },
+        ) {
+            val discovered = runCatching { discoverCatalog(applicationContext) }.getOrElse { error ->
+                fail(error.message ?: "Unable to discover plugins")
+                return@executeCatalog
+            }
+            cachedCatalog = discovered
+            val plugin = discovered.records.firstOrNull { it.packageName == pluginPackage }
+            if (plugin?.compatible != true) {
+                fail(plugin?.issue ?: "Plugin is not installed or compatible")
+                return@executeCatalog
+            }
+            val activity = applicationContext.packageManager
+                .resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+                ?.activityInfo
+            if (activity == null || !activity.exported || activity.packageName != pluginPackage ||
+                activity.permission != PluginContract.BIND_PERMISSION
+            ) {
+                fail("Plugin permission center is missing or not protected")
+                return@executeCatalog
+            }
+            main.post {
+                val target = launchContext.get() ?: return@post
+                if (target is Activity &&
+                    (target.isFinishing || target.isDestroyed || !target.hasWindowFocus())
+                ) return@post
+                val launchIntent = Intent(intent).apply {
+                    if (target !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                runCatching { target.startActivity(launchIntent) }
+                    .onFailure { fail(it.message ?: "Unable to open plugin permissions") }
+            }
         }
     }
 
@@ -152,103 +252,151 @@ object ExternalPluginRegistry {
         capability: String,
         request: Bundle,
         onFailure: (String) -> Unit,
+    ): Boolean = openPanel(
+        context = context,
+        capability = capability,
+        request = request,
+        launchGroup = capability,
+        onFailure = onFailure,
+        onComplete = {},
+    )
+
+    /**
+     * Starts one cancellable panel launch generation. A newer launch in [launchGroup], or an
+     * explicit [cancelPendingPanelLaunch], invalidates bootstrap/bind/RPC work from the old one.
+     * [onComplete] runs on the main thread exactly once for this registry generation.
+     */
+    fun openPanel(
+        context: Context,
+        capability: String,
+        request: Bundle,
+        launchGroup: String,
+        onFailure: (String) -> Unit,
+        onComplete: (opened: Boolean) -> Unit,
     ): Boolean {
-        val plugin = refresh().firstOrNull {
-            it.compatible && capability in it.descriptor!!.capabilities
-        } ?: return false
+        val slot = pendingPanelLaunches.computeIfAbsent(launchGroup) {
+            PluginAsyncOperationSlot()
+        }
         val applicationContext = context.applicationContext
+        val operation = slot.begin { result ->
+            main.post {
+                when (result) {
+                    is PluginAsyncResult.Success -> onComplete(true)
+                    is PluginAsyncResult.Cancelled -> onComplete(false)
+                    is PluginAsyncResult.Failure -> {
+                        Log.e(TAG, "Plugin panel launch failed for $capability: ${result.message}")
+                        deliverPluginPanelFailure(
+                            result.message,
+                            onFailure,
+                            onComplete,
+                        ) { Log.e(TAG, "Plugin failure callback threw", it) }
+                    }
+                }
+            }
+        }
+        val scheduled = executeCatalog(operation, "Plugin catalog worker is busy") {
+            val discovered = runCatching { discoverCatalog(applicationContext) }.getOrElse { error ->
+                operation.fail(error.message ?: "Unable to discover plugins")
+                return@executeCatalog
+            }
+            cachedCatalog = discovered
+            if (!operation.isActive()) return@executeCatalog
+            val plugin = discovered.records.firstOrNull {
+                it.compatible && capability in it.descriptor!!.capabilities
+            }
+            if (plugin == null) {
+                operation.fail("Plugin is not installed or compatible")
+                return@executeCatalog
+            }
+            bootstrapPlugin(applicationContext, plugin, operation) {
+                bindPanel(applicationContext, plugin, request, operation)
+            }
+        }
+        return scheduled
+    }
 
-        fun bindPanel(): Boolean = bindPanel(context, plugin, request, onFailure)
-
-        return afterPluginReady(applicationContext, plugin, onFailure, ::bindPanel)
+    fun cancelPendingPanelLaunch(launchGroup: String) {
+        pendingPanelLaunches[launchGroup]?.cancel()
     }
 
     private fun bindPanel(
-        launchContext: Context,
+        context: Context,
         plugin: ExternalPluginRecord,
         request: Bundle,
-        onFailure: (String) -> Unit,
-    ): Boolean {
-        val finished = AtomicBoolean(false)
+        operation: PluginAsyncOperation<Unit>,
+    ) {
+        val deadline = deadlineAfter(PLUGIN_BIND_TIMEOUT_MS)
+        val timeoutMessage = "Plugin service connection timed out"
+        val timeout = timeoutWorker.schedule(
+            { operation.fail(timeoutMessage) },
+            PLUGIN_BIND_TIMEOUT_MS,
+            TimeUnit.MILLISECONDS,
+        )
+        operation.addCleanup { timeout.cancel(false) }
+        val rpcStarted = AtomicBoolean(false)
         lateinit var connection: ServiceConnection
-
-        fun finish(error: String? = null) {
-            if (!finished.compareAndSet(false, true)) return
-            runCatching { launchContext.unbindService(connection) }
-            if (error != null) {
-                Log.e(TAG, "Plugin panel launch failed for ${plugin.packageName}: $error")
-                main.post { onFailure(error) }
-            }
-        }
+        lateinit var binding: ServiceBindingLease
 
         connection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName, binder: IBinder) {
-                runCatching {
-                    val remote = IOsmosisPlugin.Stub.asInterface(binder)
-                    require(remote.protocolVersion == PluginContract.PROTOCOL_VERSION) {
-                        "Plugin protocol changed while binding"
+                if (!rpcStarted.compareAndSet(false, true) || !operation.isActive()) return
+                executeIpc(operation, "Plugin IPC worker is busy") {
+                    val result = runCatching {
+                        val remote = IOsmosisPlugin.Stub.asInterface(binder)
+                        require(remote.protocolVersion == PluginContract.PROTOCOL_VERSION) {
+                            "Plugin protocol changed while binding"
+                        }
+                        val remoteDescriptor = PluginDescriptor.fromBundle(remote.descriptor)
+                            ?: error("Plugin returned an invalid descriptor")
+                        require(remoteDescriptor == plugin.descriptor) {
+                            "Plugin identity does not match its signed manifest"
+                        }
+                        remote.createPanelIntent(request)
                     }
-                    val remoteDescriptor = PluginDescriptor.fromBundle(remote.descriptor)
-                        ?: error("Plugin returned an invalid descriptor")
-                    require(remoteDescriptor == plugin.descriptor) {
-                        "Plugin identity does not match its signed manifest"
+                    result.onFailure { error ->
+                        operation.fail(error.message ?: "Unable to open plugin")
                     }
-                    val pendingIntent: PendingIntent = remote.createPanelIntent(request)
-                    val senderOptions = if (Build.VERSION.SDK_INT >= 34) {
-                        ActivityOptions.makeBasic().apply {
-                            setPendingIntentBackgroundActivityStartMode(
-                                if (Build.VERSION.SDK_INT >= 36) {
-                                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE
-                                } else {
-                                    @Suppress("DEPRECATION")
-                                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
-                                },
-                            )
-                        }.toBundle()
-                    } else null
-                    pendingIntent.send(
-                        launchContext,
-                        0,
-                        null,
-                        null,
-                        null,
-                        null,
-                        senderOptions,
-                    )
-                    Log.i(TAG, "Plugin panel PendingIntent sent for ${plugin.packageName}")
-                }.onSuccess {
-                    finish()
-                }.onFailure { error ->
-                    finish(error.message ?: "Unable to open plugin")
+                    val pendingIntent = result.getOrNull() ?: return@executeIpc
+                    val sent = operation.succeedBefore(
+                        deadlineNanos = deadline,
+                        timeoutMessage = timeoutMessage,
+                        failureMessage = "Unable to open plugin",
+                        value = Unit,
+                    ) {
+                        sendPanelIntent(context, pendingIntent)
+                    }
+                    if (sent) Log.i(TAG, "Plugin panel PendingIntent sent for ${plugin.packageName}")
                 }
             }
 
-            override fun onServiceDisconnected(name: ComponentName) = finish("Plugin service disconnected")
-            override fun onBindingDied(name: ComponentName) = finish("Plugin service binding died")
-            override fun onNullBinding(name: ComponentName) = finish("Plugin returned an empty binding")
+            override fun onServiceDisconnected(name: ComponentName) {
+                operation.fail("Plugin service disconnected")
+            }
+
+            override fun onBindingDied(name: ComponentName) {
+                operation.fail("Plugin service binding died")
+            }
+
+            override fun onNullBinding(name: ComponentName) {
+                operation.fail("Plugin returned an empty binding")
+            }
         }
+        binding = ServiceBindingLease(context, connection)
+        operation.addCleanup(binding::close)
 
         val intent = Intent(PluginContract.BIND_ACTION).setComponent(plugin.service)
-        val bindResult = runCatching {
+        operation.proceedBefore(
+            deadlineNanos = deadline,
+            timeoutMessage = timeoutMessage,
+            failureMessage = "Unable to bind plugin",
+        ) {
             val flags = Context.BIND_AUTO_CREATE or if (Build.VERSION.SDK_INT >= 34) {
                 Context.BIND_ALLOW_ACTIVITY_STARTS
             } else 0
-            launchContext.bindService(intent, connection, flags)
+            val bound = context.bindService(intent, connection, flags)
+            binding.onBindResult(bound)
+            require(bound) { pluginStartBlockedMessage(context, plugin) }
         }
-        bindResult.exceptionOrNull()?.let {
-            finish(it.message ?: "Unable to bind plugin")
-            return false
-        }
-        val bound = bindResult.getOrDefault(false)
-        if (!bound) {
-            finish(pluginStartBlockedMessage(launchContext.applicationContext, plugin))
-        } else {
-            main.postDelayed(
-                { finish("Plugin service connection timed out") },
-                PLUGIN_BIND_TIMEOUT_MS,
-            )
-        }
-        return bound
     }
 
     /** Queries every trusted external camera owner over Binder before Base opens its own transport. */
@@ -256,15 +404,9 @@ object ExternalPluginRegistry {
         context: Context,
         callback: (ActiveExternalCameraSession?, String?) -> Unit,
     ): Boolean {
-        val owners = refresh().filter {
-            it.compatible && PluginContract.CAPABILITY_CAMERA_SESSION_OWNER in it.descriptor!!.capabilities
-        }
-        if (owners.isEmpty()) {
-            main.post { callback(null, null) }
-            return true
-        }
+        val applicationContext = context.applicationContext
 
-        fun query(index: Int) {
+        fun query(owners: List<ExternalPluginRecord>, index: Int) {
             if (index >= owners.size) {
                 main.post { callback(null, null) }
                 return
@@ -282,12 +424,27 @@ object ExternalPluginRegistry {
                         null,
                     )
                 } else {
-                    query(index + 1)
+                    query(owners, index + 1)
                 }
             }
         }
-        query(0)
-        return true
+        return executeCatalog(
+            onRejected = { main.post { callback(null, "Plugin catalog worker is busy") } },
+        ) {
+            val discovered = runCatching { discoverCatalog(applicationContext) }.getOrElse { error ->
+                main.post { callback(null, error.message ?: "Unable to discover plugins") }
+                return@executeCatalog
+            }
+            cachedCatalog = discovered
+            val owners = discovered.records.filter {
+                it.compatible && PluginContract.CAPABILITY_CAMERA_SESSION_OWNER in it.descriptor!!.capabilities
+            }
+            if (owners.isEmpty()) {
+                main.post { callback(null, null) }
+            } else {
+                query(owners, 0)
+            }
+        }
     }
 
     private fun queryRuntimeState(
@@ -296,64 +453,18 @@ object ExternalPluginRegistry {
         callback: (Bundle?, String?) -> Unit,
     ) {
         val applicationContext = context.applicationContext
-        val finished = AtomicBoolean(false)
-        lateinit var connection: ServiceConnection
-        fun finish(state: Bundle? = null, error: String? = null) {
-            if (!finished.compareAndSet(false, true)) return
-            runCatching { applicationContext.unbindService(connection) }
-            main.post { callback(state, error) }
+        val operation = PluginAsyncOperation<Bundle>(generation = 0L) { result ->
+            main.post {
+                when (result) {
+                    is PluginAsyncResult.Success -> callback(result.value, null)
+                    is PluginAsyncResult.Failure -> callback(null, result.message)
+                    is PluginAsyncResult.Cancelled -> callback(null, "Plugin query was cancelled")
+                }
+            }
         }
-
-        fun bindRuntimeState(): Boolean {
-            val bindResult = runCatching {
-                applicationContext.bindService(
-                    Intent(PluginContract.BIND_ACTION).setComponent(plugin.service),
-                    connection,
-                    Context.BIND_AUTO_CREATE,
-                )
-            }
-            bindResult.exceptionOrNull()?.let {
-                finish(error = it.message ?: "Unable to bind plugin")
-                return false
-            }
-            val bound = bindResult.getOrDefault(false)
-            if (!bound) {
-                finish(error = pluginStartBlockedMessage(applicationContext, plugin))
-            } else {
-                main.postDelayed(
-                    { finish(error = "Plugin service connection timed out") },
-                    PLUGIN_BIND_TIMEOUT_MS,
-                )
-            }
-            return bound
+        bootstrapPlugin(applicationContext, plugin, operation) {
+            bindRuntimeState(applicationContext, plugin, operation)
         }
-
-        connection = object : ServiceConnection {
-            override fun onServiceConnected(name: ComponentName, binder: IBinder) {
-                runCatching {
-                    val remote = IOsmosisPlugin.Stub.asInterface(binder)
-                    require(remote.protocolVersion == PluginContract.PROTOCOL_VERSION) { "Plugin protocol mismatch" }
-                    val remoteDescriptor = PluginDescriptor.fromBundle(remote.descriptor)
-                        ?: error("Plugin returned an invalid descriptor")
-                    require(remoteDescriptor == plugin.descriptor) {
-                        "Plugin identity does not match its signed manifest"
-                    }
-                    remote.runtimeState
-                }.onSuccess { finish(state = it) }
-                    .onFailure { finish(error = it.message ?: "Unable to query plugin") }
-            }
-
-            override fun onServiceDisconnected(name: ComponentName) = finish(error = "Plugin service disconnected")
-            override fun onBindingDied(name: ComponentName) = finish(error = "Plugin service binding died")
-            override fun onNullBinding(name: ComponentName) = finish(error = "Plugin returned an empty binding")
-        }
-
-        afterPluginReady(
-            applicationContext,
-            plugin,
-            onFailure = { finish(error = it) },
-            action = ::bindRuntimeState,
-        )
     }
 
     /**
@@ -365,31 +476,25 @@ object ExternalPluginRegistry {
      * the main thread and is bounded from the caller's perspective because a wedged provider must not
      * freeze Base's UI or leave its camera-session gate permanently in flight.
      */
-    private fun afterPluginReady(
+    private fun <T> bootstrapPlugin(
         context: Context,
         plugin: ExternalPluginRecord,
-        onFailure: (String) -> Unit,
-        action: () -> Boolean,
-    ): Boolean {
-        val completed = AtomicBoolean(false)
-
-        fun fail(message: String) {
-            if (completed.compareAndSet(false, true)) main.post { onFailure(message) }
-        }
-
-        main.postDelayed(
-            {
-                fail(
-                    context.getString(
-                        R.string.module_start_failed_generic,
-                        plugin.displayName(),
-                    ),
-                )
-            },
-            PLUGIN_BOOTSTRAP_TIMEOUT_MS,
+        operation: PluginAsyncOperation<T>,
+        action: () -> Unit,
+    ) {
+        val deadline = deadlineAfter(PLUGIN_BOOTSTRAP_TIMEOUT_MS)
+        val timeoutMessage = context.getString(
+            R.string.module_start_failed_generic,
+            plugin.displayName(),
         )
+        val timeout = timeoutWorker.schedule(
+            { operation.fail(timeoutMessage) },
+            PLUGIN_BOOTSTRAP_TIMEOUT_MS,
+            TimeUnit.MILLISECONDS,
+        )
+        operation.addCleanup { timeout.cancel(false) }
 
-        Thread({
+        executeIpc(operation, timeoutMessage) {
             val result = runCatching {
                 context.contentResolver.call(
                     Uri.Builder()
@@ -404,20 +509,203 @@ object ExternalPluginRegistry {
                 val message = if (isXiaomiFamilyDevice()) {
                     pluginStartBlockedMessage(context, plugin)
                 } else {
-                    error.message
-                        ?: context.getString(R.string.module_start_failed_generic, plugin.displayName())
+                    error.message ?: timeoutMessage
                 }
-                fail(message)
-                return@Thread
+                operation.fail(message)
+                return@executeIpc
             }
             if (result?.getInt(PluginContract.KEY_BOOTSTRAP_PROTOCOL, -1) != PluginContract.PROTOCOL_VERSION) {
-                fail("Plugin first-launch handshake is incompatible")
-                return@Thread
+                operation.fail("Plugin first-launch handshake is incompatible")
+                return@executeIpc
             }
-            if (completed.compareAndSet(false, true)) main.post { action() }
-        }, "osmodule-plugin-bootstrap").apply { isDaemon = true }.start()
-        return true
+            timeout.cancel(false)
+            operation.proceedBefore(
+                deadlineNanos = deadline,
+                timeoutMessage = timeoutMessage,
+                failureMessage = "Unable to bind plugin",
+                action = action,
+            )
+        }
     }
+
+    private fun bindRuntimeState(
+        context: Context,
+        plugin: ExternalPluginRecord,
+        operation: PluginAsyncOperation<Bundle>,
+    ) {
+        val deadline = deadlineAfter(PLUGIN_BIND_TIMEOUT_MS)
+        val timeoutMessage = "Plugin service connection timed out"
+        val timeout = timeoutWorker.schedule(
+            { operation.fail(timeoutMessage) },
+            PLUGIN_BIND_TIMEOUT_MS,
+            TimeUnit.MILLISECONDS,
+        )
+        operation.addCleanup { timeout.cancel(false) }
+        val rpcStarted = AtomicBoolean(false)
+        lateinit var connection: ServiceConnection
+        lateinit var binding: ServiceBindingLease
+        connection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName, binder: IBinder) {
+                if (!rpcStarted.compareAndSet(false, true) || !operation.isActive()) return
+                executeIpc(operation, "Plugin IPC worker is busy") {
+                    val result = runCatching {
+                        val remote = IOsmosisPlugin.Stub.asInterface(binder)
+                        require(remote.protocolVersion == PluginContract.PROTOCOL_VERSION) {
+                            "Plugin protocol mismatch"
+                        }
+                        val remoteDescriptor = PluginDescriptor.fromBundle(remote.descriptor)
+                            ?: error("Plugin returned an invalid descriptor")
+                        require(remoteDescriptor == plugin.descriptor) {
+                            "Plugin identity does not match its signed manifest"
+                        }
+                        remote.runtimeState
+                    }
+                    result.onSuccess { state ->
+                        operation.succeedBefore(
+                            deadlineNanos = deadline,
+                            timeoutMessage = timeoutMessage,
+                            failureMessage = "Unable to query plugin",
+                            value = state,
+                        )
+                    }.onFailure { error ->
+                        operation.fail(error.message ?: "Unable to query plugin")
+                    }
+                }
+            }
+
+            override fun onServiceDisconnected(name: ComponentName) {
+                operation.fail("Plugin service disconnected")
+            }
+
+            override fun onBindingDied(name: ComponentName) {
+                operation.fail("Plugin service binding died")
+            }
+
+            override fun onNullBinding(name: ComponentName) {
+                operation.fail("Plugin returned an empty binding")
+            }
+        }
+        binding = ServiceBindingLease(context, connection)
+        operation.addCleanup(binding::close)
+
+        operation.proceedBefore(
+            deadlineNanos = deadline,
+            timeoutMessage = timeoutMessage,
+            failureMessage = "Unable to bind plugin",
+        ) {
+            val bound = context.bindService(
+                Intent(PluginContract.BIND_ACTION).setComponent(plugin.service),
+                connection,
+                Context.BIND_AUTO_CREATE,
+            )
+            binding.onBindResult(bound)
+            require(bound) { pluginStartBlockedMessage(context, plugin) }
+        }
+    }
+
+    private fun sendPanelIntent(context: Context, pendingIntent: PendingIntent) {
+        val senderOptions = if (Build.VERSION.SDK_INT >= 34) {
+            ActivityOptions.makeBasic().apply {
+                setPendingIntentBackgroundActivityStartMode(
+                    if (Build.VERSION.SDK_INT >= 36) {
+                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOW_IF_VISIBLE
+                    } else {
+                        @Suppress("DEPRECATION")
+                        ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+                    },
+                )
+            }.toBundle()
+        } else null
+        pendingIntent.send(
+            context,
+            0,
+            null,
+            null,
+            null,
+            null,
+            senderOptions,
+        )
+    }
+
+    /**
+     * All potentially blocking provider/Binder work is admitted through one bounded executor.
+     * Timeouts run on an independent scheduler, so a wedged plugin cannot prevent its own timeout.
+     */
+    private fun <T> executeIpc(
+        operation: PluginAsyncOperation<T>,
+        rejectedMessage: String,
+        action: () -> Unit,
+    ): Boolean = executeOperation(ipcWorker, operation, rejectedMessage, action)
+
+    private fun <T> executeCatalog(
+        operation: PluginAsyncOperation<T>,
+        rejectedMessage: String,
+        action: () -> Unit,
+    ): Boolean = executeOperation(catalogWorker, operation, rejectedMessage, action)
+
+    private fun <T> executeOperation(
+        worker: ThreadPoolExecutor,
+        operation: PluginAsyncOperation<T>,
+        rejectedMessage: String,
+        action: () -> Unit,
+    ): Boolean {
+        val task = FutureTask {
+            if (operation.isActive()) action()
+        }
+        operation.addCleanup {
+            task.cancel(false)
+            worker.remove(task)
+        }
+        return try {
+            worker.execute(task)
+            true
+        } catch (_: RejectedExecutionException) {
+            operation.fail(rejectedMessage)
+            false
+        }
+    }
+
+    private fun executeCatalog(
+        onRejected: () -> Unit,
+        action: () -> Unit,
+    ): Boolean {
+        val task = FutureTask(action)
+        return try {
+            catalogWorker.execute(task)
+            true
+        } catch (_: RejectedExecutionException) {
+            onRejected()
+            false
+        }
+    }
+
+    private fun registerPackageChangeReceiver() {
+        if (!packageReceiverRegistered.compareAndSet(false, true)) return
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED)
+            addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addAction(Intent.ACTION_PACKAGE_REMOVED)
+            addAction(Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                refreshAsync()
+            }
+        }
+        val registered = runCatching {
+            if (Build.VERSION.SDK_INT >= 33) {
+                appContext.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            } else {
+                @Suppress("DEPRECATION")
+                appContext.registerReceiver(receiver, filter)
+            }
+        }.isSuccess
+        if (!registered) packageReceiverRegistered.set(false)
+    }
+
+    private fun deadlineAfter(timeoutMillis: Long): Long =
+        System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
 
     fun verifyArchive(apk: File, expectedPackage: String): PluginArchiveCheck {
         if (!::appContext.isInitialized) return PluginArchiveCheck(false, reason = "Plugin registry is not initialized")
@@ -439,7 +727,12 @@ object ExternalPluginRegistry {
         val hostSigners = signerDigests(packageInfo(pm, appContext.packageName))
         val archiveSigners = signerDigests(archive)
         if (hostSigners.isEmpty() || archiveSigners.none(hostSigners::contains)) {
-            return PluginArchiveCheck(false, archive.packageName, "APK signing certificate does not match osmodule Base")
+            val reason = if (appContext.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+                appContext.getString(R.string.module_debug_signing_mismatch)
+            } else {
+                appContext.getString(R.string.module_signing_mismatch)
+            }
+            return PluginArchiveCheck(false, archive.packageName, reason)
         }
         val policy = OfficialPluginCatalog.policyFor(expectedPackage)
             ?: return PluginArchiveCheck(false, archive.packageName, "Unknown plugin package")
@@ -525,7 +818,51 @@ object ExternalPluginRegistry {
         return PluginDescriptor(id, name, version, protocolMin, protocolMax, capabilities)
     }
 
-    private const val PLUGIN_BOOTSTRAP_TIMEOUT_MS = 5_000L
-    private const val PLUGIN_BIND_TIMEOUT_MS = 5_000L
+    /** Handles cancellation racing bindService's return without leaking a late successful bind. */
+    private class ServiceBindingLease(
+        private val context: Context,
+        private val connection: ServiceConnection,
+    ) {
+        private val lock = Any()
+        private var bound = false
+        private var closeRequested = false
+
+        fun onBindResult(isBound: Boolean) {
+            val unbindNow = synchronized(lock) {
+                bound = isBound
+                if (bound && closeRequested) {
+                    bound = false
+                    true
+                } else {
+                    false
+                }
+            }
+            if (unbindNow) unbind()
+        }
+
+        fun close() {
+            val unbindNow = synchronized(lock) {
+                closeRequested = true
+                if (bound) {
+                    bound = false
+                    true
+                } else {
+                    false
+                }
+            }
+            if (unbindNow) unbind()
+        }
+
+        private fun unbind() {
+            runCatching { context.unbindService(connection) }
+        }
+    }
+
+    private fun namedDaemonThreadFactory(
+        prefix: String,
+        counter: AtomicInteger,
+    ): ThreadFactory = ThreadFactory { runnable ->
+        Thread(runnable, "$prefix-${counter.incrementAndGet()}").apply { isDaemon = true }
+    }
 
 }

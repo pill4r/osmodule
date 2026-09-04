@@ -12,6 +12,7 @@
     <string name="module_applies_to">Works with: %1$s</string>
     <string name="module_all_cameras">All supported cameras</string>
     <string name="module_osmo360">Osmo 360</string>
+    <string name="module_pocket4p">Osmo Pocket 4 Pro</string>
     <string name="module_media_name">Pair, preview &amp; download</string>
     <string name="module_media_summary">Camera pairing, media browser, flat preview and resumable downloads.</string>
     <string name="module_panorama_name">360° video viewer</string>
@@ -27,6 +28,11 @@
     <string name="module_autostart_settings">Autostart settings</string>
     <string name="module_open">Open</string>
     <string name="module_permissions">Permissions</string>
+    <string name="module_permissions_and_autostart">Permissions &amp; Autostart</string>
+    <string name="module_debug_signing_title">Release plugin cannot be mixed with Debug Base</string>
+    <string name="module_debug_github_signing_explanation">This osmodule Base uses a Debug signing certificate, while GitHub Release plugins use the production certificate. Signature isolation is required for plugin security. Choose a local plugin APK from the same Debug build instead.</string>
+    <string name="module_debug_signing_mismatch">The plugin certificate does not match this Debug Base. Choose the plugin APK from the same local or CI Debug build; GitHub Release plugins are production-signed and cannot be mixed with it.</string>
+    <string name="module_signing_mismatch">The APK signing certificate does not match osmodule Base.</string>
     <string name="module_start_failed_title">Plugin could not start</string>
     <string name="module_hyperos_autostart_required">HyperOS blocked %1$s from starting. Open Autostart settings, allow Autostart for this plugin, then retry.</string>
     <string name="module_start_failed_generic">Android refused to start %1$s. Open App info, allow background operation if your device provides that setting, then retry.</string>
@@ -41,7 +47,9 @@
     <string name="module_download_failed">Could not download the plugin APK from GitHub.</string>
     <string name="module_remove_failed">Could not open Android’s module uninstaller.</string>
     <string name="module_descriptor_missing">The installed package does not expose a valid module.</string>
-    <string name="module_rsdk_name">osmodule Remote Control</string>
-    <string name="module_rsdk_summary">Live camera preview, remote capture, camera status, shooting modes, BLE wake and GPS synchronization.</string>
+    <string name="module_rsdk_name">Osmo 360 RC</string>
+    <string name="module_rsdk_summary">Osmo 360 live preview, remote capture, camera status, shooting modes, BLE wake and GPS synchronization.</string>
+    <string name="module_pocket4p_name">Pocket 4P RC</string>
+    <string name="module_pocket4p_summary">Photo, recording and shooting-mode controls, HEVC live preview and gimbal control for Osmo Pocket 4 Pro.</string>
     <string name="module_capabilities">Capabilities: %1$s</string>
 </resources>
