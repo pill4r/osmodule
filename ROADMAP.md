@@ -2,22 +2,36 @@
 
 [English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md)
 
-### Modular R-SDK control
+> **Hardware-validation scope:** this project has run on Osmo Pocket 4 Pro and Osmo 360 only.
+> Sections for every other camera or aircraft describe inherited compatibility code, fixtures or
+> future experiments; they are not evidence that osmodule has tested or supports that hardware.
+
+### Osmo 360 RC (R-SDK)
 
 - [x] Process-wide camera session lease shared by media and R-SDK transports.
 - [x] One R-SDK connection hub shared by remote control and GPS sync.
 - [x] Public R-SDK version, key, mode, record, status, sleep, wake and restart protocol support.
 - [x] Serialized commands with sequence-matched acknowledgements, timeout and retry.
 - [x] Stable `CameraRemoteControl` management-plane contract; its implementation is absent from osmodule Base.
-- [x] Move R-SDK control and GPS into a separately installed, same-signature plugin APK.
+- [x] Move Osmo 360 RC and GPS into a separately installed, same-signature plugin APK.
 - [x] Add a versioned AIDL boundary, signed plugin discovery and plugin-owned private UI launch.
 - [x] Add the Base module manager with local APK verification and system Package Installer handoff.
-- [x] Declare per-module camera compatibility; remote control is restricted to Osmo 360.
-- [x] Prevent Base media startup while the R-SDK plugin reports an active cross-process camera lease.
+- [x] Declare per-module camera compatibility and route each remote panel only to its target model.
+- [x] Prevent Base media startup while the Osmo 360 RC plugin reports an active cross-process camera lease.
 - [x] Add a low-latency local Wi-Fi viewfinder with H.264/H.265 hardware decode to the remote console.
 - [ ] Hardware-verify the viewfinder receiver and stream profile across Osmo 360 firmware versions.
 - [ ] Hardware-verify every command across Osmo 360 firmware versions and record firmware gates.
-- [ ] Add a signed module-repository index and download UI; current module installation selects a local APK.
+- [x] Add an official GitHub Release catalog with verified plugin downloads; retain the local APK picker for offline and development builds.
+
+### Pocket 4P RC (DUML)
+
+- [x] Package Pocket 4P remote control as a separately installed, same-signature plugin APK.
+- [x] Adapt the OpenPocketCine registration, three-window ACK and one-shot HEVC live-view flow.
+- [x] Add photo, recording, shooting-mode, gimbal-stick, recenter and flip commands with status telemetry.
+- [x] Send an explicit neutral gimbal command on touch release, backgrounding, disconnect and teardown.
+- [x] Preserve OpenPocketCine's Apache-2.0 attribution and license text.
+- [ ] Hardware-verify session setup, HEVC preview, every exposed command and neutral-gimbal safety on Pocket 4 Pro firmware.
+- [ ] Add exposure, white-balance, focus and zoom controls after the MVP transport is hardware-verified.
 
 ### 360° media
 
@@ -25,13 +39,14 @@
 - [x] Keep pairing, flat preview and downloads in the core media app.
 - [x] Remove the competing scrub-frame decoder during Osmo 360 startup buffering.
 
-### 2. The rest of the Osmo line:
+### 2. Inherited compatibility paths for the rest of the Osmo line
 
-- **Action 4**: WIP, most media operations appear to work.
+- **Action 4:** an inherited profile and media path exist, but neither has been hardware-validated
+  by this project.
 
-- [x] Camera is detected and can be connected to
-- [x] Grid loads
-- [x] Media downloads work
+- [ ] Hardware-validate discovery and connection
+- [ ] Hardware-validate the media grid
+- [ ] Hardware-validate media downloads
 - [ ] Delete a file
 - [ ] Pagination: scroll past 45 files
 - [ ] Favorite a file
@@ -42,20 +57,18 @@
 
 We want browse + download on the Action 1/2/3, which use an older list format keyed by numeric
 `FileIndex` with no path strings ([MEDIA_PROTOCOL §1](MEDIA_PROTOCOL.md#1-get-media-list), "Parsed —
-index-based"). The **list is shipped and hardware-verified** (`decodeIndexList`, fixture
-`action1_7.bin`) — the grid shows the clips. The **download is not**: our `/v1?file_index=` is a
-placeholder, and HTTP `:80` is refused while the datalink is up.
+index-based"). The current tree retains the shared DCF primitives and the documented 65-byte stride;
+the Action-specific decoder and its historical `action1_7.bin` fixture remain branch work rather than
+shipped support. **None of this has been hardware-validated by this project.** Download is also
+unfinished: `/v1?file_index=` is a placeholder.
 
-**Branch: `support-osmo-action-1`.** Five commits on top of main: the index decoder ported onto the DCF
-seam with the record layout corrected, the 65-byte stride confirmed on a second camera, and
-`DcfTransferProbe` — which asks the camera outright whether it serves files over the datalink, and
-tests whether `:80` is gated on playback mode. That probe is the experiment that answers this item's
-core question; it has never been run against an Action.
+**Inherited branch note: `support-osmo-action-1`.** It contains the index decoder, captured fixtures
+and `DcfTransferProbe`, which asks whether the camera serves files over the datalink and whether `:80`
+is gated on playback mode. The current project has not run that probe against Action hardware.
 
-**Blockers:** none any more. Unblocked 2026-08-07 — a decompiled DJI-derived app's media layer turns out
-to be index-based as well, so the download path can be read off rather than guessed at. Two smaller
-fixes ride along: the AP keepalive does not hold an Action's AP (`onLost` ~40 s after the
-list), and the `/v2` storage detect should be skipped for index cameras (it fires two failing HEADs).
+**Blockers:** current-project hardware access and validation of the download endpoint. Decompiled
+DJI-derived code and inherited captures suggest an index-based media layer, but that evidence is not a
+substitute for an osmodule run on Action hardware.
 
 ### 11. Direct USB-C ↔ USB-C media read
 
@@ -95,21 +108,25 @@ duration, fps, resolution and size, all manifest fields, and nothing about expos
   atom rather than the whole clip.
 - **Drone — `file_subtype` 11 (`PHOTO_METADATA`) / 13 (`JSON`)**, named in the enum recovered from a
   decompiled DJI-derived app ([MEDIA_PROTOCOL §29](MEDIA_PROTOCOL.md#29-http-media-api-v1--dcf-indexed))
-  but never requested against an aircraft. Subtypes 3–16 were refused on a Neo 2.
+  but never requested by this project against an aircraft. Inherited Neo 2 logs report that subtypes
+  3–16 were refused.
 
 ### 18. Drones beyond the Mavic 3
 
-- **Neo 2 (`0x007e`) stalls at the session-open.** It hands over creds with the `DJI FLY` token and
-  handshakes on `udp/9003`, then fails with *no drone serial seen in a beacon*. The `0x51` open has to
+This entire section is an inherited research backlog. osmodule has not hardware-tested the Mavic 3,
+Neo 2, Mini 3 or any other aircraft, and the profiles remain experimental compatibility paths.
+
+- **Neo 2 (`0x007e`).** Inherited logs report credentials with the `DJI FLY` token and a handshake on
+  `udp/9003`, followed by *no drone serial seen in a beacon*. The `0x51` open is expected to
   echo the aircraft's serial, read out of its own `0x51/0x13` beacon
   ([MEDIA_PROTOCOL §27a](MEDIA_PROTOCOL.md#27a-neo-2--the-same-transport-a-different-unlock)). Two
   candidates, now instrumented rather than guessed: our parser required a serial of exactly 20 chars
   (a Mavic 3's length), or the Neo 2 never emits the beacon. A failed open now logs every `0x51` inner
   command and dumps any `0x13` payload, so the next run tells them apart. Secondary: its AP dropped
-  ~16 s in, 112 ms *before* the list query went out.
-- **Mini 3** — model byte unknown, so it resolves only by the `DRONE_ID_FLOOR` guess. It also enters
-  QuickTransfer differently: no hold-to-confirm at all, **three quick power-button presses** instead,
-  which is why the approval dialog needs its own line for it.
+  ~16 s in, 112 ms *before* the list query went out. None of this has been reproduced here.
+- **Mini 3** — inherited notes do not identify a model byte, so it resolves only by the
+  `DRONE_ID_FLOOR` guess. Those notes say it enters QuickTransfer with **three quick power-button
+  presses** instead of a hold, but this project has not verified that behavior.
 - **Delete and favourite are camera-only.** Drone records carry no manifest handle, so
   `CameraFile.deletable` is false and the long-press menu correctly offers neither. Wiring them means
   finding what a drone deletes *by* — plausibly the packed `file_index` itself.
@@ -129,8 +146,8 @@ isn't a `0x51/0x13`. Strictly diagnostic: it never latches a serial or changes w
 run that merely looks like a serial isn't one. `support-mini3` also carries the three-press line in the
 approval dialog. `PcapAnalysis` rides along on both for reading a capture with our own decoder.
 
-**Blockers:** hardware. Both branches are instrumentation waiting for one run each — nothing more can
-be deduced from what we have.
+**Blockers:** hardware. The current project needs its first controlled run on each aircraft before any
+of these paths can be called verified or supported.
 
 ### 19. Migrate to CompanionDeviceManager API
 

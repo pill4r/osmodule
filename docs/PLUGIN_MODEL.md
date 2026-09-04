@@ -10,7 +10,8 @@ an open marketplace. The current catalog contains:
 | Plugin | Package | Required capability |
 |---|---|---|
 | 360 Viewer | `dev.konraditurbe.osmosis.plugin.panorama360` | `camera.media.360-view` |
-| R-SDK Remote | `dev.konraditurbe.osmosis.plugin.rsdk` | `camera.rsdk.remote-panel`, `camera.session.owner` |
+| Osmo 360 RC (R-SDK) | `dev.konraditurbe.osmosis.plugin.rsdk` | `camera.rsdk.remote-panel`, `camera.session.owner` |
+| Pocket 4P RC | `dev.konraditurbe.osmosis.plugin.pocket4p` | `camera.pocket4p.remote-panel`, `camera.session.owner` |
 
 Base shows only catalog entries in Modules and rejects an installed or selected APK when its package,
 plugin ID or capability set falls outside that catalog. Matching the signing key alone is insufficient.
@@ -36,7 +37,7 @@ stable while implementations evolve.
 
 - Base and every official release plugin are built from reviewed source and signed with the same
   release lineage.
-- App release tags are `vX.Y.Z`; CI builds Base and both plugin APKs, uploads each APK as a separate
+- App release tags are `vX.Y.Z`; CI builds Base and all three plugin APKs, uploads each APK as a separate
   Actions artifact, and publishes a release after the quality gate passes.
 - Plugin SDK tags are `plugin-sdk-vX.Y.Z`; CI publishes the AAR to GitHub Packages.
 - Debug builds share Android's debug signer and are for local testing only.

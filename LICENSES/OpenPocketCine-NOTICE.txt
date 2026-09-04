@@ -1,0 +1,12 @@
+OpenPocketCine
+Copyright 2026 Erik Sutton and OpenPocketCine contributors
+
+The osmodule Pocket 4P RC module contains a modified Kotlin adaptation of
+OpenPocketCine protocol, transport, live-view depacketization, and decoder behavior.
+OpenPocketCine is licensed under the Apache License, Version 2.0; the license text is
+provided alongside this notice as OpenPocketCine-Apache-2.0.txt.
+
+OpenPocketCine is not affiliated with or endorsed by SZ DJI Technology Co., Ltd.
+"DJI", "Osmo", "Osmo Pocket", and "Mimo" are trademarks of SZ DJI Technology Co.,
+Ltd., used for identification only. No DJI SDK or proprietary DJI documentation is
+included in, distributed with, or required by OpenPocketCine.

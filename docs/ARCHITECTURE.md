@@ -2,8 +2,8 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md)
 
-osmodule has one lean Base APK and two optional official plugin APKs. The 360° viewer and R-SDK
-remote control own their code, resources, permissions and Android lifecycle. Base never uses
+osmodule has one lean Base APK and three optional official plugin APKs. The 360° Viewer, Osmo 360
+RC (R-SDK) and Pocket 4P RC own their code, resources, permissions and Android lifecycle. Base never uses
 `DexClassLoader`, loads plugin resources, or merges optional plugin components into its APK.
 
 ## APK and module graph
@@ -21,20 +21,30 @@ Base — dev.konraditurbe.osmosis
 
 360 Viewer — dev.konraditurbe.osmosis.plugin.panorama360
   :plugins:panorama360
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.0.0
+    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
     └─ :feature:panorama360
          └─ :core:panorama-renderer
 
-R-SDK Remote — dev.konraditurbe.osmosis.plugin.rsdk
+Osmo 360 RC (R-SDK) — dev.konraditurbe.osmosis.plugin.rsdk
   :plugins:rsdk
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.0.0
+    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
     └─ :feature:control-rsdk
          ├─ :protocol:rsdk
          ├─ :transport:ble
          └─ :core:camera-session
+
+Pocket 4P RC — dev.konraditurbe.osmosis.plugin.pocket4p
+  :plugins:pocket4p
+    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
+    └─ :feature:control-pocket4p
+         ├─ :core:common
+         ├─ :core:module-api
+         ├─ :core:camera-session
+         ├─ :camera:media
+         └─ :protocol:duml
 ```
 
-The two plugin build files depend on a versioned Maven coordinate, not directly on
+The three plugin build files depend on a versioned Maven coordinate, not directly on
 `:core:plugin-api`. This monorepo substitutes that coordinate with the local source project for
 atomic development. An out-of-tree plugin can consume the published AAR without including Base.
 The official reference plugins still reuse implementation libraries from this repository; that is
@@ -78,9 +88,10 @@ the official Base. See [Plugin distribution model](PLUGIN_MODEL.md).
 ## Camera-session ownership
 
 `core:camera-session` is the process-local lock used by transports inside each APK. Base also queries
-plugins advertising `camera.session.owner` before opening its media transport. R-SDK remote control
-and GPS share one session hub in their plugin process, so a background GPS session cannot race Base
-for BLE access. Binder errors fail closed for ownership and identity checks.
+plugins advertising `camera.session.owner` before opening its media transport. Osmo 360 RC and GPS
+share one R-SDK session hub in their plugin process, while Pocket 4P RC reports its DUML session
+through the same cross-process ownership contract. Binder errors fail closed for ownership and
+identity checks.
 
 ## Build outputs
 
@@ -88,12 +99,14 @@ for BLE access. Binder errors fail closed for ownership and identity checks.
 ./gradlew test lint \
   :app:assembleDebug \
   :plugins:panorama360:assembleDebug \
-  :plugins:rsdk:assembleDebug
+  :plugins:rsdk:assembleDebug \
+  :plugins:pocket4p:assembleDebug
 ```
 
 - `app/build/outputs/apk/debug/app-debug.apk`
 - `plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk`
 - `plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk`
+- `plugins/pocket4p/build/outputs/apk/debug/pocket4p-debug.apk`
 
 ## Boundary rules
 

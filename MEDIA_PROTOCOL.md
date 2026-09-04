@@ -1,9 +1,10 @@
 # osmodule — Media & camera DUML commands
 
 An implementation reference for browsing, fetching and controlling media on DJI Osmo cameras (WiFi UDP
-datalink + BLE control) — enough to write a client from scratch, in any language. Everything here was
-reverse-engineered and verified against real hardware or a capture; where something is inferred rather
-than measured, it says so.
+datalink + BLE control) — enough to write a client from scratch, in any language. This reference retains
+hardware observations and capture evidence inherited from Osmosis; they are protocol evidence, not the
+current osmodule project's hardware-test matrix. osmodule itself has run only on **Osmo Pocket 4 Pro**
+and **Osmo 360**. Where a protocol detail is inferred rather than measured, it says so.
 
 Transports: **BLE** = write GATT `fff5`, notify `fff4` (the `[6:8]` msg-id round-trips either way — encode/decode it **little-endian** and the camera echoes the bytes back, so its true endianness is moot for request/response matching).
 
@@ -1317,13 +1318,14 @@ before concatenating, or every straddling chunk fails CRC and disappears.
 | +19 | u8 | **favourite** — `1` = starred (the byte right after the constant `4c 03` pair) |
 
 No filename is transmitted; it is reconstructed from the index. Fields past `+19` are unmapped. The
-favourite flag is hardware-verified on a Mavic 3 (files 580/585/590 read `1`, their neighbours `0`).
+favourite flag is supported by inherited Mavic 3 hardware captures (files 580/585/590 read `1`, their
+neighbours `0`).
 
 The fps and resolution codes here are their **own** set, distinct from the Osmo cameras' CompositePack
 format byte ([§ "What a record means"](#what-a-record-means): `95`=2.7K 4:3, `103`=4K 4:3, …) — a code
-that means 4K in one does not in the other. The values marked ✓ below were **verified on a Mavic 3**
-(the fps it shoots, and 1080p / 4K / C4K / 5.1K); the rest are the codes the drone reports for modes a
-Mavic 3 cannot shoot but other aircraft can, and are unverified until one of those aircraft answers.
+that means 4K in one does not in the other. The values marked ✓ below are backed by the inherited
+Mavic 3 capture set (the fps it shoots, and 1080p / 4K / C4K / 5.1K); the rest are the codes the drone
+reports for modes a Mavic 3 cannot shoot but other aircraft can, and remain unverified.
 
 #### Frame-rate codes (`+14`)
 

@@ -1,10 +1,10 @@
 # osmodule — DJI Osmo protocol map (BLE + WiFi)
 
-Ground truth for how osmodule talks to DJI Osmo cameras with **no DJI SDK**. Everything here is
-**hardware-verified** on an **Osmo Nano** and an **Xtra Edge Pro (= DJI Osmo Action 5 Pro)** unless a
-line is explicitly marked *inferred* (from the open-source reference repos for the 360 / Pocket 3 /
-Action 4-6, in `reference/`). Where the two verified cameras differ, the difference is called out; a
-per-model summary table is at the end.
+Protocol notes for how osmodule talks to DJI Osmo cameras with **no DJI SDK**. This file retains
+capture evidence inherited from Osmosis, including Nano, Xtra/Action and drone observations; those
+records are useful implementation evidence but are **not** current osmodule hardware-test coverage.
+This project has tested only **Osmo Pocket 4 Pro** and **Osmo 360**. Lines for other models should be
+read as inherited or inferred unless explicitly stated otherwise. A per-model summary is at the end.
 
 The pipeline is always: **BLE pair → get WiFi creds → wake the AP → join it → pull the media list over
 the DUML datalink → fetch thumbnails/files over HTTP.**
@@ -199,7 +199,7 @@ happened within a second of each other. Worth one probe on the next factory-fres
 - API 29+ **`WifiNetworkSpecifier`** → `ConnectivityManager.requestNetwork(...)` with a
   `NetworkCallback`. On `onAvailable(network)` call **`bindProcessToNetwork(network)`** so our HTTP/UDP
   sockets use the internet-less AP instead of falling back to cellular.
-- Use `setWpa2Passphrase` for Nano, Xtra and the hardware-verified Osmo 360. The earlier inferred
+- Use `setWpa2Passphrase` for Nano, Xtra and the project-tested Osmo 360. The earlier inferred
   WPA3 setting made Android search for 32 seconds before its WPA2 retry found the 360 immediately.
 - **Keepalive:** the AP drops ~10 s idle. Hold it with an active HTTP download, a UDP datalink
   handshake ping every ~2 s, or a TCP-7001 heartbeat (Nano).

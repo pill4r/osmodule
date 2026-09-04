@@ -2,8 +2,8 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md)
 
-osmodule 由一个精简的 Base APK 和两个可选的官方插件 APK 组成。360° 查看器与 R-SDK
-远控分别拥有自己的代码、资源、权限和 Android 生命周期。Base 不使用 `DexClassLoader`，
+osmodule 由一个精简的 Base APK 和三个可选的官方插件 APK 组成。360° 查看器、Osmo 360
+遥控（R-SDK）和 Pocket 4P 遥控分别拥有自己的代码、资源、权限和 Android 生命周期。Base 不使用 `DexClassLoader`，
 不读取插件资源，也不会把可选插件组件合并到自身 APK。
 
 ## APK 与模块关系
@@ -21,20 +21,30 @@ Base — dev.konraditurbe.osmosis
 
 360° 查看器 — dev.konraditurbe.osmosis.plugin.panorama360
   :plugins:panorama360
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.0.0
+    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
     └─ :feature:panorama360
          └─ :core:panorama-renderer
 
-R-SDK 远控 — dev.konraditurbe.osmosis.plugin.rsdk
+Osmo 360 遥控（R-SDK）— dev.konraditurbe.osmosis.plugin.rsdk
   :plugins:rsdk
-    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.0.0
+    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
     └─ :feature:control-rsdk
          ├─ :protocol:rsdk
          ├─ :transport:ble
          └─ :core:camera-session
+
+Pocket 4P 遥控 — dev.konraditurbe.osmosis.plugin.pocket4p
+  :plugins:pocket4p
+    ├─ dev.konraditurbe.osmodule:plugin-sdk:1.1.0
+    └─ :feature:control-pocket4p
+         ├─ :core:common
+         ├─ :core:module-api
+         ├─ :core:camera-session
+         ├─ :camera:media
+         └─ :protocol:duml
 ```
 
-两个插件的构建文件依赖版本化 Maven 坐标，而不是直接依赖 `:core:plugin-api`。在本仓库中，
+三个插件的构建文件依赖版本化 Maven 坐标，而不是直接依赖 `:core:plugin-api`。在本仓库中，
 Gradle 会把该坐标替换为本地源码项目，方便原子化开发；仓库外的插件可以只使用已发布的
 AAR，无需包含 Base。官方参考插件仍复用仓库中的实现层库，但这是源码复用，不是对 Base
 APK 或 Base 运行时的依赖。
@@ -74,8 +84,9 @@ osmodule 官方构建有意只接受官方插件。自动发现或用户本地�
 ## 相机会话所有权
 
 `core:camera-session` 是每个 APK 内部传输层共用的进程内锁。Base 在打开素材传输前，还会
-查询声明 `camera.session.owner` 的插件。R-SDK 远控和 GPS 在插件进程中共享一个会话中心，
-因此后台 GPS 会话不会与 Base 争用 BLE。身份和所有权查询遇到 Binder 错误时采取失败关闭。
+查询声明 `camera.session.owner` 的插件。Osmo 360 遥控和 GPS 在插件进程中共享一个 R-SDK
+会话中心；Pocket 4P 遥控则通过相同的跨进程所有权协议报告 DUML 会话。身份和所有权查询
+遇到 Binder 错误时采取失败关闭。
 
 ## 构建产物
 
@@ -83,12 +94,14 @@ osmodule 官方构建有意只接受官方插件。自动发现或用户本地�
 ./gradlew test lint \
   :app:assembleDebug \
   :plugins:panorama360:assembleDebug \
-  :plugins:rsdk:assembleDebug
+  :plugins:rsdk:assembleDebug \
+  :plugins:pocket4p:assembleDebug
 ```
 
 - `app/build/outputs/apk/debug/app-debug.apk`
 - `plugins/panorama360/build/outputs/apk/debug/panorama360-debug.apk`
 - `plugins/rsdk/build/outputs/apk/debug/rsdk-debug.apk`
+- `plugins/pocket4p/build/outputs/apk/debug/pocket4p-debug.apk`
 
 ## 边界规则
 

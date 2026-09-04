@@ -2,7 +2,7 @@
 
 [English](PLUGIN_SDK.md) | [简体中文](PLUGIN_SDK.zh-CN.md)
 
-`dev.konraditurbe.osmodule:plugin-sdk:1.0.0` is the standalone Android AAR for the osmodule
+`dev.konraditurbe.osmodule:plugin-sdk:1.1.0` is the standalone Android AAR for the osmodule
 cross-APK contract. It contains `IOsmosisPlugin.aidl`, `PluginContract`, `PluginDescriptor` and the
 reusable signature-protected `PluginBootstrapProvider`. It does not depend on Base or any camera,
 transport, protocol or UI implementation.
@@ -32,7 +32,7 @@ dependencyResolutionManagement {
 ```kotlin
 // plugin application build.gradle.kts
 dependencies {
-    implementation("dev.konraditurbe.osmodule:plugin-sdk:1.0.0")
+    implementation("dev.konraditurbe.osmodule:plugin-sdk:1.1.0")
 }
 ```
 
@@ -57,6 +57,10 @@ for runtime-state and permission-management examples.
 ## Versioning
 
 The Maven version and Binder protocol version are separate:
+
+SDK 1.1.0 adds the Pocket 4P official package/plugin identities, its remote-panel capability and the
+optional camera-model request key. These are additive Bundle constants, so the Binder protocol stays
+at version 1 and existing compatible plugins remain valid.
 
 - Patch/minor SDK releases may add optional keys, constants or helpers without changing protocol 1.
 - Removing or changing an AIDL method, key meaning or required value needs a new Binder protocol.

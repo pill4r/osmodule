@@ -12,13 +12,14 @@ The repository is a Gradle multi-project Android build pinned to Android Gradle 
 Gradle 8.14.5, Kotlin 1.9.24, compile/target SDK 36 and Java 21 bytecode. The minimum supported Android
 version is Android 10 (API 29).
 
-It produces three applications:
+It produces four applications:
 
 | Application | Gradle module | Application ID | Purpose |
 |---|---|---|---|
 | osmodule Base | `:app` | `dev.konraditurbe.osmosis` | Camera discovery and local media workflows |
 | 360 Viewer plugin | `:plugins:panorama360` | `dev.konraditurbe.osmosis.plugin.panorama360` | Optional interactive Osmo 360 playback |
-| R-SDK plugin | `:plugins:rsdk` | `dev.konraditurbe.osmosis.plugin.rsdk` | Optional Osmo 360 remote control, preview and GPS sync |
+| Osmo 360 RC (R-SDK) | `:plugins:rsdk` | `dev.konraditurbe.osmosis.plugin.rsdk` | Optional Osmo 360 remote control, preview and GPS sync |
+| Pocket 4P RC | `:plugins:pocket4p` | `dev.konraditurbe.osmosis.plugin.pocket4p` | Optional Osmo Pocket 4 Pro remote control and preview |
 
 The Base package keeps the historical Osmosis namespace for upgrade and plugin-ABI compatibility.
 The product name and release identity are osmodule.
@@ -39,9 +40,11 @@ The product name and release identity are osmodule.
 | `:camera:media` | Camera/drone media sessions, manifests, addressing, HTTP and downloads | Activities and module registration |
 | `:feature:media` | Base media screens and the core media module | External-plugin implementation |
 | `:feature:panorama360` | Plugin-internal 360-degree media viewer | Base application wiring or R-SDK control |
-| `:feature:control-rsdk` | Reusable R-SDK controller, live preview and plugin-owned screens | Base application wiring |
+| `:feature:control-rsdk` | Osmo 360 RC controller, live preview and plugin-owned screens using R-SDK | Base application wiring |
+| `:feature:control-pocket4p` | Pocket 4P DUML controller, live preview and plugin-owned screens | Base application wiring or R-SDK control |
 | `:plugins:panorama360` | 360 Viewer application, Binder service and manifest | Base UI or media browsing |
-| `:plugins:rsdk` | Plugin application, service and manifest | Base UI or direct access to Base internals |
+| `:plugins:rsdk` | Osmo 360 RC plugin application, service and manifest | Base UI or direct access to Base internals |
+| `:plugins:pocket4p` | Pocket 4P RC plugin application, service and manifest | Base UI or direct access to Base internals |
 
 When adding code, place wire formats in `protocol`, Android transports in `transport`, camera media
 semantics in `camera`, user-facing workflows in `feature`, and only final composition in an
@@ -76,11 +79,13 @@ Run the repository-wide gate before submitting a change:
   :plugins:panorama360:assembleDebug \
   :plugins:rsdk:assembleRelease \
   :plugins:rsdk:assembleDebug \
+  :plugins:pocket4p:assembleRelease \
+  :plugins:pocket4p:assembleDebug \
   :core:plugin-api:publishPluginSdkPublicationToLocalPluginSdkRepository
 ```
 
 This checks pure JVM modules, Android unit tests, all module Lint tasks, both build variants of all
-three APKs, and the publishable SDK AAR. Release builds run R8 code/resource shrinking; custom
+four APKs, and the publishable SDK AAR. Release builds run R8 code/resource shrinking; custom
 manifest-loaded `AppModule` entries must have a consumer keep rule. A checkout without signing
 material intentionally produces unsigned release APKs.
 
@@ -115,15 +120,15 @@ in the pull request or issue. Never add credentials or an unsanitized capture to
 
 `.github/workflows/ci.yml` runs on every push to `main`, every pull request targeting `main`, and on
 manual dispatch. It needs no signing secrets. The job validates the Gradle Wrapper, restores the
-Gradle cache, runs all JVM and Android unit tests, runs repository-wide Lint, builds all three Debug APKs,
+Gradle cache, runs all JVM and Android unit tests, runs repository-wide Lint, builds all four Debug APKs,
 and retains test reports, Lint reports and each APK as a separate workflow artifact for 14 days.
 GitHub wraps every Actions artifact in a ZIP even when it contains one APK. Concurrent runs on the
 same ref are cancelled so that only the newest revision consumes runner time.
 
 Application tags matching `v*` trigger `.github/workflows/build_app.yml`. CI validates the Gradle
-wrapper, runs the full quality gate, builds Base and both plugins with the same signing configuration,
+wrapper, runs the full quality gate, builds Base and all three plugins with the same signing configuration,
 uploads each APK as a separate build artifact and creates a GitHub release with stable raw asset names
-(`app-release.apk`, `panorama360-release.apk`, and `rsdk-release.apk`). After all gates pass, the
+(`app-release.apk`, `panorama360-release.apk`, `rsdk-release.apk`, and `pocket4p-release.apk`). After all gates pass, the
 workflow publishes the release so the module manager's latest-release URLs become available. SDK tags
 matching `plugin-sdk-v*` trigger
 `.github/workflows/publish_plugin_sdk.yml`, which verifies the tag/version match and publishes the

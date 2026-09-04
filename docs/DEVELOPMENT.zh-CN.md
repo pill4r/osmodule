@@ -8,13 +8,14 @@
 
 本仓库是一个 Gradle 多项目 Android 构建，固定使用 Android Gradle Plugin 8.13.2、Gradle 8.14.5、Kotlin 1.9.24、compile/target SDK 36 和 Java 21 字节码。最低支持 Android 10（API 29）。
 
-仓库会生成三个应用：
+仓库会生成四个应用：
 
 | 应用 | Gradle 模块 | Application ID | 用途 |
 |---|---|---|---|
 | osmodule Base | `:app` | `dev.konraditurbe.osmosis` | 相机发现和本地素材流程 |
 | 360° 查看器插件 | `:plugins:panorama360` | `dev.konraditurbe.osmosis.plugin.panorama360` | 可选的 Osmo 360 交互式播放 |
-| R-SDK 插件 | `:plugins:rsdk` | `dev.konraditurbe.osmosis.plugin.rsdk` | 可选的 Osmo 360 遥控、预览和 GPS 同步 |
+| Osmo 360 遥控（R-SDK） | `:plugins:rsdk` | `dev.konraditurbe.osmosis.plugin.rsdk` | 可选的 Osmo 360 遥控、预览和 GPS 同步 |
+| Pocket 4P 遥控 | `:plugins:pocket4p` | `dev.konraditurbe.osmosis.plugin.pocket4p` | 可选的 Osmo Pocket 4 Pro 遥控和预览 |
 
 Base 包保留历史 Osmosis 命名空间，以维持升级路径和插件 ABI 兼容性。产品名称和发布身份为 osmodule。
 
@@ -34,9 +35,11 @@ Base 包保留历史 Osmosis 命名空间，以维持升级路径和插件 ABI �
 | `:camera:media` | 相机/无人机素材会话、清单、寻址、HTTP 和下载 | Activity 和模块注册 |
 | `:feature:media` | Base 素材页面和核心素材模块 | 外部插件实现 |
 | `:feature:panorama360` | 插件内部的 360° 素材查看器 | Base 应用装配或 R-SDK 控制 |
-| `:feature:control-rsdk` | 可复用的 R-SDK 控制器、实时预览和插件页面 | Base 应用装配 |
+| `:feature:control-rsdk` | 使用 R-SDK 的 Osmo 360 遥控控制器、实时预览和插件页面 | Base 应用装配 |
+| `:feature:control-pocket4p` | Pocket 4P DUML 控制器、实时预览和插件页面 | Base 应用装配或 R-SDK 控制 |
 | `:plugins:panorama360` | 360° 查看器应用、Binder 服务和清单 | Base 界面或素材浏览 |
-| `:plugins:rsdk` | 插件应用、服务和清单 | Base 界面或对 Base 内部实现的直接访问 |
+| `:plugins:rsdk` | Osmo 360 遥控插件应用、服务和清单 | Base 界面或对 Base 内部实现的直接访问 |
+| `:plugins:pocket4p` | Pocket 4P 遥控插件应用、服务和清单 | Base 界面或对 Base 内部实现的直接访问 |
 
 新增代码时，将线协议放入 `protocol`，Android 传输放入 `transport`，相机素材语义放入 `camera`，面向用户的流程放入 `feature`，最终装配才放入应用模块。下层模块不能为了少写几行胶水代码而依赖上层模块。
 
@@ -67,10 +70,12 @@ Base 包保留历史 Osmosis 命名空间，以维持升级路径和插件 ABI �
   :plugins:panorama360:assembleDebug \
   :plugins:rsdk:assembleRelease \
   :plugins:rsdk:assembleDebug \
+  :plugins:pocket4p:assembleRelease \
+  :plugins:pocket4p:assembleDebug \
   :core:plugin-api:publishPluginSdkPublicationToLocalPluginSdkRepository
 ```
 
-该命令会检查纯 JVM 模块、Android 单元测试、所有模块的 Lint 任务、三个 APK 的两个构建
+该命令会检查纯 JVM 模块、Android 单元测试、所有模块的 Lint 任务、四个 APK 的两个构建
 类型，以及可发布的 SDK AAR。Release 构建会执行 R8 代码/资源收缩；通过自定义清单元数据加载
 的 `AppModule` 入口必须提供 consumer keep 规则。未提供签名材料的检出目录会按设计生成未签名的 Release APK。
 
@@ -99,11 +104,11 @@ adb shell am instrument -w \
 
 ## 发布流程
 
-`.github/workflows/ci.yml` 会在每次推送到 `main`、每个以 `main` 为目标的 Pull Request，以及手动触发时运行。该工作流不需要任何签名 Secret。任务会校验 Gradle Wrapper、恢复 Gradle 缓存、运行全部 JVM 和 Android 单元测试、执行全仓库 Lint、构建三个 Debug APK，并将测试报告、Lint 报告和每个 APK 分别作为独立工作流产物保留 14 天。即使一个 Artifact 中只有一个 APK，GitHub 仍会把 Actions Artifact 包装为 ZIP。同一个 ref 的旧任务会自动取消，避免过时提交继续占用 Runner。
+`.github/workflows/ci.yml` 会在每次推送到 `main`、每个以 `main` 为目标的 Pull Request，以及手动触发时运行。该工作流不需要任何签名 Secret。任务会校验 Gradle Wrapper、恢复 Gradle 缓存、运行全部 JVM 和 Android 单元测试、执行全仓库 Lint、构建四个 Debug APK，并将测试报告、Lint 报告和每个 APK 分别作为独立工作流产物保留 14 天。即使一个 Artifact 中只有一个 APK，GitHub 仍会把 Actions Artifact 包装为 ZIP。同一个 ref 的旧任务会自动取消，避免过时提交继续占用 Runner。
 
 匹配 `v*` 的应用标签会触发 `.github/workflows/build_app.yml`。CI 会验证 Gradle Wrapper、运行
-完整质量门禁、使用相同签名配置构建 Base 和两个插件、分别上传每个 APK，并创建带有稳定
-原始资源文件名（`app-release.apk`、`panorama360-release.apk` 和 `rsdk-release.apk`）的 GitHub
+完整质量门禁、使用相同签名配置构建 Base 和三个插件、分别上传每个 APK，并创建带有稳定
+原始资源文件名（`app-release.apk`、`panorama360-release.apk`、`rsdk-release.apk` 和 `pocket4p-release.apk`）的 GitHub
 Release。所有门禁通过后，工作流会发布该 Release，使模块管理器的最新版本链接可以使用。
 匹配 `plugin-sdk-v*` 的标签会触发 `.github/workflows/publish_plugin_sdk.yml`，校验标签与版本一致后把 Release AAR 发布到 GitHub Packages。
 

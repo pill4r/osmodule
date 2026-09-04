@@ -2,7 +2,7 @@
 
 [English](PLUGIN_SDK.md) | [简体中文](PLUGIN_SDK.zh-CN.md)
 
-`dev.konraditurbe.osmodule:plugin-sdk:1.0.0` 是 osmodule 跨 APK 协议的独立 Android AAR。
+`dev.konraditurbe.osmodule:plugin-sdk:1.1.0` 是 osmodule 跨 APK 协议的独立 Android AAR。
 它包含 `IOsmosisPlugin.aidl`、`PluginContract`、`PluginDescriptor` 和可复用的签名权限保护
 `PluginBootstrapProvider`，不依赖 Base，也不依赖任何相机、传输、协议或界面实现。
 
@@ -31,7 +31,7 @@ dependencyResolutionManagement {
 ```kotlin
 // 插件应用 build.gradle.kts
 dependencies {
-    implementation("dev.konraditurbe.osmodule:plugin-sdk:1.0.0")
+    implementation("dev.konraditurbe.osmodule:plugin-sdk:1.1.0")
 }
 ```
 
@@ -55,6 +55,9 @@ PendingIntent。请求 Bundle 必须使用 `PluginContract` 键，并按不可�
 ## 版本规则
 
 Maven 版本与 Binder 协议版本相互独立：
+
+SDK 1.1.0 新增 Pocket 4P 官方包/插件身份、远控面板能力和可选的相机型号请求键。这些都是
+新增的 Bundle 常量，因此 Binder 协议仍为版本 1，现有兼容插件继续有效。
 
 - SDK 的补丁版或次版本可以新增可选键、常量或辅助类，而不改变协议 1；
 - 删除或改变 AIDL 方法、键语义或必填值时，必须升级 Binder 协议；

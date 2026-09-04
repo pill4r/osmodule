@@ -67,6 +67,9 @@ android {
     kotlinOptions {
         jvmTarget = '21'
     }
+    sourceSets {
+        main.assets.srcDir rootProject.file('LICENSES')
+    }
 }
 
 dependencies {

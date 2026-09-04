@@ -9,7 +9,8 @@ osmodule 官方发行版采用**仅官方、同签名的插件模型**，不是�
 | 插件 | 包名 | 必需能力 |
 |---|---|---|
 | 360° 查看器 | `dev.konraditurbe.osmosis.plugin.panorama360` | `camera.media.360-view` |
-| R-SDK 远控 | `dev.konraditurbe.osmosis.plugin.rsdk` | `camera.rsdk.remote-panel`、`camera.session.owner` |
+| Osmo 360 遥控（R-SDK） | `dev.konraditurbe.osmosis.plugin.rsdk` | `camera.rsdk.remote-panel`、`camera.session.owner` |
+| Pocket 4P 遥控 | `dev.konraditurbe.osmosis.plugin.pocket4p` | `camera.pocket4p.remote-panel`、`camera.session.owner` |
 
 Base 的“模块”页面只显示目录条目；已安装或用户选择的 APK 只要包名、插件 ID 或能力集合超出
 目录，就会被拒绝。仅仅使用相同签名密钥仍然不够。
@@ -31,7 +32,7 @@ Base 的“模块”页面只显示目录条目；已安装或用户选择的 AP
 ## 发布
 
 - Base 和所有官方 Release 插件都从经过审查的源码构建，并使用相同发布签名谱系；
-- 应用发布标签为 `vX.Y.Z`；CI 构建 Base 与两个插件 APK，将每个 APK 分别上传为独立的
+- 应用发布标签为 `vX.Y.Z`；CI 构建 Base 与三个插件 APK，将每个 APK 分别上传为独立的
   Actions Artifact，并在质量门禁通过后发布 Release；
 - Plugin SDK 标签为 `plugin-sdk-vX.Y.Z`；CI 将 AAR 发布到 GitHub Packages；
 - Debug 构建共享 Android 调试签名，仅用于本地测试；

@@ -2,22 +2,36 @@
 
 [English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md)
 
-### 模块化 R-SDK 控制
+> **真机验证范围：**本项目目前只在 Osmo Pocket 4 Pro 和 Osmo 360 上运行过。下文涉及其他
+> 相机或飞行器的章节仅表示继承的兼容代码、测试 fixture 或后续实验，不代表 osmodule 已在
+> 对应硬件上测试或声明支持。
+
+### Osmo 360 遥控（R-SDK）
 
 - [x] 素材和 R-SDK 传输共享进程级相机会话租约。
 - [x] 遥控和 GPS 同步共享一个 R-SDK 连接中心。
 - [x] 支持公开的 R-SDK 版本、密钥、模式、录制、状态、休眠、唤醒和重启协议。
 - [x] 命令串行化，并实现序列号匹配的确认、超时和重试。
 - [x] 建立稳定的 `CameraRemoteControl` 管理面协议；其实现不进入 osmodule Base。
-- [x] 将 R-SDK 控制和 GPS 移入独立安装、与 Base 同签名的插件 APK。
+- [x] 将 Osmo 360 遥控和 GPS 移入独立安装、与 Base 同签名的插件 APK。
 - [x] 增加带版本的 AIDL 边界、签名插件发现和插件自有私有界面启动。
 - [x] 增加 Base 模块管理器、本地 APK 校验和系统 Package Installer 交接。
-- [x] 声明各模块兼容的相机型号；遥控功能仅支持 Osmo 360。
-- [x] 当 R-SDK 插件报告活动的跨进程相机租约时，阻止 Base 启动素材连接。
+- [x] 声明各模块兼容的相机型号，并只把各遥控面板路由到其目标型号。
+- [x] 当 Osmo 360 遥控插件报告活动的跨进程相机租约时，阻止 Base 启动素材连接。
 - [x] 在遥控台中增加使用 H.264/H.265 硬件解码的低延迟本地 Wi-Fi 取景器。
 - [ ] 在不同 Osmo 360 固件版本上进行取景接收器和码流配置的硬件验证。
 - [ ] 在不同 Osmo 360 固件版本上验证每条命令，并记录固件限制。
-- [ ] 增加带签名的模块仓库索引和下载界面；当前模块安装只能选择本地 APK。
+- [x] 增加通过官方 GitHub Release 下载并校验插件的目录；保留本地 APK 选择器供离线和开发构建使用。
+
+### Pocket 4P 遥控（DUML）
+
+- [x] 将 Pocket 4P 遥控封装为独立安装、与 Base 同签名的插件 APK。
+- [x] 改编 OpenPocketCine 的注册、三窗口 ACK 和一次性 HEVC 开流流程。
+- [x] 增加拍照、录像、拍摄模式、云台摇杆、回中和前后翻转命令及状态遥测。
+- [x] 在触摸松开、进入后台、断开连接和销毁时显式发送云台 neutral 命令。
+- [x] 保留 OpenPocketCine 的 Apache-2.0 署名和许可证全文。
+- [ ] 在 Pocket 4 Pro 各固件上验证会话建立、HEVC 预览、全部已公开命令和云台停止安全性。
+- [ ] MVP 传输通过真机验证后，再增加曝光、白平衡、对焦和变焦控制。
 
 ### 360° 素材
 
@@ -25,13 +39,13 @@
 - [x] 将配对、平面预览和下载保留在核心素材应用中。
 - [x] 在 Osmo 360 启动缓冲期间移除相互竞争的拖动帧解码器。
 
-### 2. Osmo 产品线的其余设备
+### 2. Osmo 产品线其余设备的继承兼容路径
 
-- **Action 4**：开发中，大部分素材操作看起来可以工作。
+- **Action 4**：保留了继承的型号配置和素材路径，但本项目尚未进行真机验证。
 
-- [x] 能够发现并连接相机
-- [x] 能够加载素材网格
-- [x] 能够下载素材
+- [ ] 真机验证相机发现与连接
+- [ ] 真机验证素材网格
+- [ ] 真机验证素材下载
 - [ ] 删除文件
 - [ ] 分页：滚动加载超过 45 个文件
 - [ ] 收藏文件
@@ -40,11 +54,11 @@
 
 ### 6. 较早的 Osmo Action 产品（基于索引的列表）
 
-目标是在 Action 1/2/3 上实现浏览和下载。这些设备使用以数字 `FileIndex` 为键、没有路径字符串的旧列表格式（见 [MEDIA_PROTOCOL §1](MEDIA_PROTOCOL.md#1-get-media-list) 中的 “Parsed — index-based”）。**列表功能已经发布并经过硬件验证**：`decodeIndexList` 和 fixture `action1_7.bin` 可以让素材显示在网格中。**下载尚未完成**：当前 `/v1?file_index=` 只是占位实现，而且 datalink 工作时 HTTP `:80` 会拒绝连接。
+目标是在 Action 1/2/3 上实现浏览和下载。这些设备使用以数字 `FileIndex` 为键、没有路径字符串的旧列表格式（见 [MEDIA_PROTOCOL §1](MEDIA_PROTOCOL.md#1-get-media-list) 中的 “Parsed — index-based”）。当前代码树只保留了共用 DCF 基础结构和文档中的 65 字节步长；Action 专用解码器及历史 `action1_7.bin` fixture 仍属于分支工作，不是已经发布的支持。**本项目尚未对此进行真机验证**。下载同样尚未完成，当前 `/v1?file_index=` 只是占位实现。
 
-**分支：`support-osmo-action-1`。** 该分支比 main 多五个提交：把索引解码器移植到 DCF 接缝并修正记录布局；在第二台相机上确认 65 字节步长；加入 `DcfTransferProbe`，直接询问相机是否通过 datalink 提供文件，并测试 `:80` 是否受播放模式限制。这个探针可以回答本项工作的核心问题，但还没有在 Action 真机上运行过。
+**继承分支记录：`support-osmo-action-1`。** 其中包含索引解码器、抓取的 fixture 和 `DcfTransferProbe`；该探针用于询问相机是否通过 datalink 提供文件，并测试 `:80` 是否受播放模式限制。本项目尚未在 Action 真机上运行该探针。
 
-**阻塞项：**目前没有。已于 2026-08-07 解除阻塞——从一个反编译的 DJI 衍生应用可以确认其素材层同样基于索引，因此下载路径可以通过阅读实现得到，而不再需要猜测。同时还包含两个较小修复：AP keepalive 无法保持 Action 的 AP（加载列表后约 40 秒触发 `onLost`），而且索引相机应跳过 `/v2` 存储检测，否则会发出两个失败的 HEAD 请求。
+**阻塞项：**需要当前项目取得对应硬件，并验证下载端点。反编译的 DJI 衍生代码和继承的抓包表明其素材层可能基于索引，但这些证据不能替代 osmodule 在 Action 真机上的运行结果。
 
 ### 11. 通过 USB-C ↔ USB-C 直接读取素材
 
@@ -64,19 +78,22 @@
 
 - **照片——数据已经在线路中。** EXIF 缩略图路径会读取原文件的前 64 kB（见 [EmbeddedJpeg](camera/media/src/main/java/dev/konraditurbe/osmosis/core/EmbeddedJpeg.kt)），同一个 `APP1` 块包含 ISO、曝光时间、光圈和焦距。当前代码下载后会丢弃这些数据，因此读取它们只需要增加一次解析，**不需要额外请求**。这是最直接的第一步。
 - **视频——`djmd` 轨道。** 该轨道使用 protobuf 且没有加密。需要通过 Range 请求读取正确的 atom，而不是下载整个视频。
-- **无人机——`file_subtype` 11（`PHOTO_METADATA`）/ 13（`JSON`）。** 这些名称来自反编译 DJI 衍生应用得到的枚举（见 [MEDIA_PROTOCOL §29](MEDIA_PROTOCOL.md#29-http-media-api-v1--dcf-indexed)），但从未针对飞行器请求。Neo 2 拒绝了 3–16 的所有 subtype。
+- **无人机——`file_subtype` 11（`PHOTO_METADATA`）/ 13（`JSON`）。** 这些名称来自反编译 DJI 衍生应用得到的枚举（见 [MEDIA_PROTOCOL §29](MEDIA_PROTOCOL.md#29-http-media-api-v1--dcf-indexed)），但本项目从未针对飞行器请求。继承的 Neo 2 日志称 3–16 的所有 subtype 均被拒绝。
 
 ### 18. Mavic 3 之外的无人机
 
-- **Neo 2（`0x007e`）停在会话打开阶段。** 它使用 `DJI FLY` token 交付凭据，并在 `udp/9003` 上完成握手，随后因“信标中没有发现无人机序列号”而失败。`0x51` open 必须回显从飞行器自身 `0x51/0x13` 信标中读取的序列号（见 [MEDIA_PROTOCOL §27a](MEDIA_PROTOCOL.md#27a-neo-2--the-same-transport-a-different-unlock)）。目前有两个经过插桩、而不是继续猜测的候选原因：解析器要求序列号长度恰好为 20 个字符（Mavic 3 的长度），或者 Neo 2 根本没有发出该信标。open 失败时现在会记录每条 `0x51` 内层命令并转储所有 `0x13` 载荷，因此下一次运行可以区分两种情况。次要问题：它的 AP 在约 16 秒时断开，比列表查询发出早 112 ms。
-- **Mini 3**——型号字节未知，因此只能通过 `DRONE_ID_FLOOR` 推断解析。它进入 QuickTransfer 的方式也不同：完全不需要长按确认，而是**快速按三次电源键**，因此确认对话框需要单独说明。
+本节全部属于继承的研究待办。osmodule 尚未在 Mavic 3、Neo 2、Mini 3 或其他飞行器上进行
+真机测试；这些型号配置仍只是实验性兼容路径。
+
+- **Neo 2（`0x007e`）。** 继承日志显示它会使用 `DJI FLY` token 交付凭据并在 `udp/9003` 上完成握手，随后因“信标中没有发现无人机序列号”而失败。`0x51` open 预计需要回显从飞行器自身 `0x51/0x13` 信标中读取的序列号（见 [MEDIA_PROTOCOL §27a](MEDIA_PROTOCOL.md#27a-neo-2--the-same-transport-a-different-unlock)）。现有插桩可以区分序列号长度假设与缺少信标两种情况；继承日志还记录了 AP 在列表查询前断开。这些现象均未由本项目复现。
+- **Mini 3**——继承记录没有确定型号字节，因此只能通过 `DRONE_ID_FLOOR` 推断解析。记录称它通过**快速按三次电源键**进入 QuickTransfer，但本项目尚未验证。
 - **删除和收藏目前只支持相机。** 无人机记录不携带清单 handle，因此 `CameraFile.deletable` 为 false，长按菜单不会提供这两项操作。实现它们需要找出无人机用什么标识删除文件，可能就是打包后的 `file_index`。
 - **尚未测试但成本较低：**无人机上的 `/v2?storage=N&path=…`（预计可用但从未执行，目前全部通过 `/v1`），以及 `PROXY_MOOV` / `ORIGIN_MOOV`（`file_subtype` 15/16）。后者只提供 MP4 的 `moov`，可以替代预览为了查找它而发出的 Range 请求。
 - **其他飞行器。** ID 大于等于 `0x40` 的设备会根据有文档记录的推断回退到无人机默认值（`CameraModel.DRONE_ID_FLOOR`），至少可以进入足够深入的流程以便诊断。
 
 **分支：`support-neo2` 和 `support-mini3`。** 两个分支携带相同的诊断改动，各有一个提交，因为未知机型需要相同的信息。`DroneFrameCensus` 能回答现有日志无法回答的问题：`0x51 inner cmds seen: NONE` 只能说明飞行器不像 Mavic 那样通信，却不能说明它实际使用什么协议。因此它会按 cmdset/cmd 统计所有 CRC 有效的帧（包括嵌套帧）、记录每种传输数据包的原始头部，并找出包含**类似序列号的连续字符**（12–24 个大写字母或数字）的载荷。这样，即使序列号不在 `0x51/0x13` 中，也可以确定该机型的哪一帧携带它。该工具严格用于诊断：看起来像序列号的字符串不一定真是序列号，因此它不会锁存序列号，也不会改变发送内容。`support-mini3` 还包含确认对话框中的三次按键说明。两个分支也带有 `PcapAnalysis`，用于通过我们自己的解码器读取抓包。
 
-**阻塞项：**硬件。两个分支都是等待各运行一次的插桩代码，无法从当前数据进一步推断。
+**阻塞项：**硬件。当前项目需要先在每种飞行器上完成一次受控运行，之后才能把这些路径标为已验证或受支持。
 
 ### 19. 迁移到 CompanionDeviceManager API
 

@@ -13,9 +13,9 @@ package dev.konraditurbe.osmosis.drone
  * else in a beacon looks like it. The longest such run wins, and the byte in front comes back with it,
  * because a response should echo whatever tag this aircraft used rather than a Mavic's.
  *
- * Lives outside `DroneSession` because the same beacon arrives on **two transports**: the datalink over
- * WiFi, and — verified on a Mavic 3 — GATT notifications over BLE, some 30 seconds earlier, before the
- * drone's AP even exists. See [inTunnelFrame].
+ * Lives outside `DroneSession` because the same beacon arrives on **two transports** in the inherited
+ * Mavic 3 capture: the datalink over WiFi and GATT notifications over BLE, some 30 seconds earlier,
+ * before the drone's AP even exists. See [inTunnelFrame].
  */
 object DroneSerial {
 

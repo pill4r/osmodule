@@ -106,10 +106,10 @@ object DcfRecords {
      * +19 u8   favourite flag: 1 = starred — the byte right after the constant `4c 03` pair
      * ```
      * The res/fps codes are their own set, distinct from the Osmo cameras' CompositePack format byte —
-     * a code meaning 4K in one does not in the other. Hardware-verified on a Mavic 3 across twelve clips
-     * spanning 1080p/4K/C4K/5.1K at 24–60 fps; an unmapped code is left null rather than guessed.
+     * a code meaning 4K in one does not in the other. The inherited Mavic 3 captures span twelve clips
+     * at 1080p/4K/C4K/5.1K and 24–60 fps; an unmapped code is left null rather than guessed.
      *
-     * The favourite flag is **hardware-verified on the Mavic 3** too: three files favourited (580, 585,
+     * The favourite flag is also supported by the inherited Mavic 3 capture set: three files favourited (580, 585,
      * 590) read `01` here and the seven around them `00`, videos and stills alike. It is read wherever
      * the stride reaches it; on a body that puts it elsewhere the worst case is a cosmetic wrong heart,
      * never a wrong file. Fields past `+19` are still unmapped.

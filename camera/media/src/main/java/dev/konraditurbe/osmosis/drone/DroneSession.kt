@@ -27,9 +27,10 @@ class DroneSession(
     port: Int = 9003,
     /**
      * The serial + tag already read off the aircraft's BLE identity beacon, if one arrived while
-     * pairing. Verified on a Mavic 3: the same `0x51/0x13` beacon lands as a GATT notification ~30 s
-     * before the AP exists, so the serial can be in hand before the datalink even opens — no beacon
-     * parsing on the datalink and no dependence on the challenge. See [DroneSerial.inTunnelFrame].
+     * pairing. In the inherited Mavic 3 hardware capture, the same `0x51/0x13` beacon lands as a GATT
+     * notification ~30 s before the AP exists, so the serial can be in hand before the datalink even
+     * opens — no beacon parsing on the datalink and no dependence on the challenge. See
+     * [DroneSerial.inTunnelFrame].
      */
     knownSerial: Pair<ByteArray, Int>? = null,
 ) : DumlSession(log, port, tcpPoke = false, isDrone = true) {
@@ -489,7 +490,7 @@ class DroneSession(
     private val OPEN_CHALLENGE_WAIT_MS = 2000L
 
     private val openRequests = listOf(
-        "0501040100",   // Mavic 3 (hardware-verified end to end)
+        "0501040100",   // Mavic 3 (inherited end-to-end capture)
         "05ff040200",   // Mini 3 (PCAPdroid capture, 2026-08-09)
     )
 
