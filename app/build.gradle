@@ -26,9 +26,10 @@ android {
         // the published v1.3.2, 25 the published v1.4.0, 26 the published v1.4.1, 27 the published
         // v1.4.2 and 28 the published v1.4.3. Version 32 starts the fully external optional-plugin
         // layout and enables release shrinking. Version 33 adds Pocket 4P remote control, automatic
-        // camera discovery and the generation-safe external camera-session bridge.
-        versionCode = 33
-        versionName = "1.6.0"
+        // camera discovery and the generation-safe external camera-session bridge. Version 34 moves
+        // Base and official plugins to the project-owned namespace and improves Pocket 4P handoff.
+        versionCode = 34
+        versionName = "1.6.1"
         testInstrumentationRunner = "dev.pillar.osmodule.plugins.PluginBindingInstrumentation"
     }
 

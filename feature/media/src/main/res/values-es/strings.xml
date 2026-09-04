@@ -251,6 +251,9 @@
     <string name="selected_count">%1$d seleccionados</string>
     <string name="empty_gallery_title">Aún no hay contenido</string>
     <string name="empty_gallery_message">Prueba otro filtro o captura algo y vuelve a conectar la cámara para actualizar la biblioteca.</string>
+    <string name="gallery_syncing_title">Sincronizando contenido de la cámara</string>
+    <string name="gallery_syncing_message">La cámara sigue conectada por Wi-Fi. Actualizando la lista de contenido en segundo plano…</string>
+    <string name="gallery_refresh_failed">No se pudo actualizar la lista de contenido de la cámara. Se muestra la última galería sincronizada.</string>
     <string name="media_badge_favorite">favorito</string>
     <string name="media_badge_burst">ráfaga</string>
     <string name="media_badge_panorama">panorámica</string>

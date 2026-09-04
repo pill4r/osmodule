@@ -251,6 +251,9 @@
     <string name="selected_count">Вибрано: %1$d</string>
     <string name="empty_gallery_title">Медіафайлів ще немає</string>
     <string name="empty_gallery_message">Спробуйте інший фільтр або зніміть щось і підключіть камеру знову, щоб оновити медіатеку.</string>
+    <string name="gallery_syncing_title">Синхронізація медіафайлів камери</string>
+    <string name="gallery_syncing_message">Камера все ще підключена через Wi-Fi. Список медіафайлів оновлюється у фоновому режимі…</string>
+    <string name="gallery_refresh_failed">Не вдалося оновити список медіафайлів камери. Показано останню синхронізовану галерею.</string>
     <string name="media_badge_favorite">обране</string>
     <string name="media_badge_burst">серія</string>
     <string name="media_badge_panorama">панорама</string>

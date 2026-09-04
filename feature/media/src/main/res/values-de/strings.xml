@@ -251,6 +251,9 @@
     <string name="selected_count">%1$d ausgewählt</string>
     <string name="empty_gallery_title">Noch keine Medien</string>
     <string name="empty_gallery_message">Ändere den Filter oder nimm etwas auf und verbinde die Kamera erneut, um die Medien zu aktualisieren.</string>
+    <string name="gallery_syncing_title">Kameramedien werden synchronisiert</string>
+    <string name="gallery_syncing_message">Die Kamera ist weiterhin über WLAN verbunden. Die Medienliste wird im Hintergrund aktualisiert…</string>
+    <string name="gallery_refresh_failed">Die Medienliste der Kamera konnte nicht aktualisiert werden. Die zuletzt synchronisierte Galerie wird angezeigt.</string>
     <string name="media_badge_favorite">Favorit</string>
     <string name="media_badge_burst">Serienaufnahme</string>
     <string name="media_badge_panorama">Panorama</string>
