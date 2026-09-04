@@ -8,6 +8,54 @@ import java.net.InetAddress
 import kotlin.random.Random
 
 /**
+ * Selects which DJI receive windows a client keeps open.
+ *
+ * Media browsing predates live view and deliberately retains its proven single-cursor ACK behavior.
+ * Pocket live view additionally acknowledges video (`0x02`), reliable data (`0x03`), and the third
+ * telemetry window exactly as the official app/OpenPocketCine traffic does. The `POCKET_LIVE`
+ * behavior is a modified Kotlin adaptation of OpenPocketCine's Apache-2.0 transport implementation;
+ * see `THIRD_PARTY_NOTICES.md` and `LICENSES/OpenPocketCine-NOTICE.txt`.
+ */
+enum class DumlAckProfile { MEDIA, POCKET_LIVE }
+
+/** Immutable receive-window reducer used by Pocket live view and its protocol regression tests. */
+internal data class PocketAckWindows(
+    val videoCursor: Int = 0,
+    val ackedDataCursor: Int = 0,
+    val extraCursor: Int = 0,
+    /** True only after a real pktType `0x02`; telemetry is merely a refreshable seed. */
+    val hasVideoPacket: Boolean = false,
+    val hasAckedData: Boolean = false,
+    val hasExtra: Boolean = false,
+) {
+    fun advancing(datagram: ByteArray): PocketAckWindows {
+        if (datagram.size < 8) return this
+        return when (datagram[6].toInt() and 0xFF) {
+            0x01 -> if (datagram.size >= 34) copy(
+                videoCursor = if (hasVideoPacket) videoCursor else datagram.u16le(10),
+                ackedDataCursor = if (hasAckedData) ackedDataCursor else datagram.u16le(18),
+                extraCursor = datagram.u16le(26),
+                // Do not set hasVideoPacket here: later telemetry must refresh this seed until video.
+                hasAckedData = true,
+                hasExtra = true,
+            ) else this
+            0x02 -> copy(videoCursor = datagram.u16le(4), hasVideoPacket = true)
+            0x03 -> copy(ackedDataCursor = datagram.u16le(4), hasAckedData = true)
+            else -> this
+        }
+    }
+
+    fun payload(baseSeq: Int): ByteArray = DumlTransport.ackPayload(
+        videoCursor = videoCursor,
+        ackedDataCursor = if (hasAckedData) ackedDataCursor else baseSeq,
+        extraCursor = if (hasExtra) extraCursor else baseSeq,
+    )
+
+    private fun ByteArray.u16le(offset: Int): Int =
+        (this[offset].toInt() and 0xFF) or ((this[offset + 1].toInt() and 0xFF) shl 8)
+}
+
+/**
  * The DUML-over-UDP datalink itself: socket, session, sequencing and framing. Everything a camera and
  * a drone do **identically**, with no idea what a media manifest is.
  *
@@ -33,6 +81,9 @@ class DumlTransport(
     private val bindLocalPort: Boolean = false,
     /** Byte 10 of the routing header is `0x60` on the commands DJI Fly sends a Mavic, `0x00` for a camera. */
     private val droneRouting: Boolean = false,
+    private val ackProfile: DumlAckProfile = DumlAckProfile.MEDIA,
+    /** Optional larger kernel queue for sustained live video; zero keeps the platform default. */
+    private val receiveBufferSizeBytes: Int = 0,
 ) {
 
     var sessionId = 0
@@ -66,11 +117,13 @@ class DumlTransport(
      * Echoed back in [sendAck]; the peer holds off streaming until its window is being acknowledged.
      */
     private var peerCursor = 0
+    @Volatile private var pocketAckWindows = PocketAckWindows()
     private var msgId51 = 0
     private var seq51 = 0
 
     private lateinit var sock: DatagramSocket
     private lateinit var peer: InetAddress
+    private val sendLock = Any()
 
     /** The last packet handed to the socket — kept so a query can be logged verbatim and diffed. */
     var lastSentPacket: ByteArray? = null
@@ -100,12 +153,18 @@ class DumlTransport(
                 .getOrElse { DatagramSocket() }
         } else DatagramSocket()
         sock.soTimeout = 200
+        if (receiveBufferSizeBytes > 0) {
+            runCatching { sock.receiveBufferSize = receiveBufferSizeBytes }
+                .onFailure { log("datalink: could not enlarge UDP receive buffer (${it.message})") }
+            log("datalink: UDP receive buffer ${sock.receiveBufferSize} bytes")
+        }
         sessionId = Random.nextInt(0x1000, 0xFFFE)
         // Fresh base per connect, 8-aligned — see [baseSeq]. camChannel starts here because until the
         // peer says otherwise, the only sequence space either side knows about is the one we proposed.
         baseSeq = Random.nextInt(0x1000, 0xF000) and 0xFFF8
         camChannel = baseSeq
         peerCursor = 0
+        pocketAckWindows = PocketAckWindows()
     }
 
     /**
@@ -138,9 +197,9 @@ class DumlTransport(
     /** Send a UDP packet, swallowing a send failure. When the AP drops or the network is unbound
      *  mid-session `sock.send` throws ENETUNREACH — expected on a dying link, and it must NEVER crash
      *  the keep-alive thread (it once did). */
-    private fun sendPacket(pkt: ByteArray): Boolean {
+    private fun sendPacket(pkt: ByteArray): Boolean = synchronized(sendLock) {
         lastSentPacket = pkt
-        return runCatching { sock.send(DatagramPacket(pkt, pkt.size, peer, port)) }.isSuccess
+        runCatching { sock.send(DatagramPacket(pkt, pkt.size, peer, port)) }.isSuccess
     }
 
     fun sendRaw(pktType: Int, payload: ByteArray) {
@@ -165,23 +224,22 @@ class DumlTransport(
      *
      * Sent with seq 0, like every other type-`0x04`.
      */
-    fun sendAck() {
-        fun grp(v: Int) = byteArrayOf(
-            (v and 0xFF).toByte(), ((v shr 8) and 0xFF).toByte(),
-            (v and 0xFF).toByte(), ((v shr 8) and 0xFF).toByte(),
-            0, 0, 0, 0,
-        )
-        val payload = grp(peerCursor) + grp(baseSeq) + grp(baseSeq) + byteArrayOf(0, 0)
-        val old = udpSeq; udpSeq = 0
-        val hdr = udpHeader(0x04, payload.size)
-        udpSeq = old
-        sendPacket(hdr + payload)
+    fun sendAck(): Boolean {
+        val payload = if (ackProfile == DumlAckProfile.POCKET_LIVE) {
+            pocketAckWindows.payload(baseSeq)
+        } else {
+            ackPayload(peerCursor, baseSeq, baseSeq)
+        }
+        // ACKs always use transport seq 0. Building that header directly makes this safe for the
+        // Pocket module's independent 25 ms ACK pump without touching the command sequence.
+        val hdr = udpHeader(0x04, payload.size, sessionId, 0)
+        return sendPacket(hdr + payload)
     }
 
     fun sendDuml(
         set: Int, cmd: Int, payload: ByteArray,
         receiverType: Int, receiverId: Int, cmdType: Int = 2,
-    ) {
+    ): Boolean {
         cmdCounter++
         val rt = routingHeader()
         val target = 0x02 or (((receiverId shl 5) or receiverType) shl 8)
@@ -189,7 +247,9 @@ class DumlTransport(
         val duml = DjiMessage(target, dumlSeq, type, payload).encode()
         dumlSeq = (dumlSeq + 1) and 0xFFFF
         val pkt = udpHeader(0x05, rt.size + duml.size) + rt + duml
-        if (sendPacket(pkt)) advance()
+        val sent = sendPacket(pkt)
+        if (sent) advance()
+        return sent
     }
 
     /**
@@ -223,32 +283,44 @@ class DumlTransport(
 
     // ---- receive -----------------------------------------------------------------------------------
 
-    fun recvAll(durationMs: Long): List<ByteArray> {
+    fun recvAll(durationMs: Long, pollTimeoutMs: Int = 200): List<ByteArray> {
         val out = ArrayList<ByteArray>()
         val deadline = System.nanoTime() + durationMs * 1_000_000
         val buf = ByteArray(65536)
+        val oldTimeout = sock.soTimeout
+        sock.soTimeout = pollTimeoutMs.coerceAtLeast(1)
         while (System.nanoTime() < deadline) {
             try {
                 val p = DatagramPacket(buf, buf.size)
                 sock.receive(p)
                 val data = p.data.copyOf(p.length)
                 out.add(data)
-                if (data.size >= 10) {
-                    val ch = (data[8].toInt() and 0xFF) or ((data[9].toInt() and 0xFF) shl 8)
-                    if (ch != 0) camChannel = ch
-                }
-                // The peer's reliable-downlink cursor rides in its 34-byte pktType-0x01 status frames;
-                // [sendAck] echoes it back, and the peer will not open its downlink until we do.
-                if (data.size == 34 && (data[6].toInt() and 0xFF) == 0x01) {
-                    peerCursor = (data[10].toInt() and 0xFF) or ((data[11].toInt() and 0xFF) shl 8)
-                }
+                noteReceived(data)
             } catch (_: java.net.SocketTimeoutException) {
                 // keep polling until the deadline
             } catch (_: Exception) {
                 break
             }
         }
+        runCatching { sock.soTimeout = oldTimeout }
         return out
+    }
+
+    private fun noteReceived(data: ByteArray) {
+        if (data.size >= 10) {
+            val ch = u16le(data, 8)
+            if (ch != 0) camChannel = ch
+        }
+        if (data.size < 8) return
+        if (ackProfile == DumlAckProfile.POCKET_LIVE) {
+            pocketAckWindows = pocketAckWindows.advancing(data)
+            return
+        }
+        when (data[6].toInt() and 0xFF) {
+            0x01 -> if (data.size >= 34) {
+                peerCursor = u16le(data, 10)
+            }
+        }
     }
 
     // ---- headers -----------------------------------------------------------------------------------
@@ -282,6 +354,19 @@ class DumlTransport(
     // ---- frame scanning (pure) ---------------------------------------------------------------------
 
     companion object {
+
+        private fun u16le(bytes: ByteArray, offset: Int): Int =
+            (bytes[offset].toInt() and 0xFF) or ((bytes[offset + 1].toInt() and 0xFF) shl 8)
+
+        /** Build the three duplicated receive-window groups carried by a pktType-`0x04` ACK. */
+        fun ackPayload(videoCursor: Int, ackedDataCursor: Int, extraCursor: Int): ByteArray {
+            fun grp(value: Int) = byteArrayOf(
+                (value and 0xFF).toByte(), ((value shr 8) and 0xFF).toByte(),
+                (value and 0xFF).toByte(), ((value shr 8) and 0xFF).toByte(),
+                0, 0, 0, 0,
+            )
+            return grp(videoCursor) + grp(ackedDataCursor) + grp(extraCursor) + byteArrayOf(0, 0)
+        }
 
         /**
          * The 8-byte transport header: `[u16 flag|total][u16 session][u16 seq][u8 pktType][u8 xor]`,

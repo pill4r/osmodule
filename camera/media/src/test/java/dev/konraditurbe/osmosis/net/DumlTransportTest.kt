@@ -2,6 +2,7 @@ package dev.konraditurbe.osmosis.net
 
 import dev.konraditurbe.osmosis.duml.DjiMessage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -77,6 +78,69 @@ class DumlTransportTest {
         val c = DumlTransport.routingHeader(0x100, 7, drone = false)
         assertEquals(hex(d.copyOfRange(0, 10)), hex(c.copyOfRange(0, 10)))
         assertEquals(7, d[8].toInt() and 0xFF)   // command counter
+    }
+
+    // ---- receive-window ACK -----------------------------------------------------------------------
+
+    @Test
+    fun `pocket live ack carries the three independent receive cursors`() {
+        val payload = DumlTransport.ackPayload(
+            videoCursor = 0x1020,
+            ackedDataCursor = 0x3040,
+            extraCursor = 0x5060,
+        )
+        assertEquals(26, payload.size)
+        assertEquals(
+            "2010201000000000403040300000000060506050000000000000",
+            hex(payload),
+        )
+    }
+
+    @Test
+    fun `window ack preserves a wrapped zero cursor instead of treating it as missing`() {
+        val payload = DumlTransport.ackPayload(0, 0, 0)
+        assertEquals(ByteArray(26).toList(), payload.toList())
+    }
+
+    @Test
+    fun `pocket window reducer refreshes telemetry seed until real video takes over`() {
+        fun packet(type: Int, group0: Int = 0, group1: Int = 0, group2: Int = 0) =
+            ByteArray(34).also { bytes ->
+                bytes[6] = type.toByte()
+                fun put(offset: Int, value: Int) {
+                    bytes[offset] = value.toByte()
+                    bytes[offset + 1] = (value ushr 8).toByte()
+                }
+                put(if (type == 0x01) 10 else 4, group0)
+                if (type == 0x01) {
+                    put(18, group1)
+                    put(26, group2)
+                }
+            }
+
+        var windows = PocketAckWindows()
+        windows = windows.advancing(packet(0x01, 0x1010, 0x2020, 0x3030))
+        assertEquals(0x1010, windows.videoCursor)
+        assertFalse(windows.hasVideoPacket)
+        assertEquals(0x2020, windows.ackedDataCursor)
+        assertEquals(0x3030, windows.extraCursor)
+
+        windows = windows.advancing(packet(0x01, 0x1110, 0x2220, 0x3330))
+        assertEquals("a newer telemetry seed refreshes group 0", 0x1110, windows.videoCursor)
+        assertEquals("telemetry cannot rewind seeded group 1", 0x2020, windows.ackedDataCursor)
+        assertEquals("group 2 follows every telemetry packet", 0x3330, windows.extraCursor)
+
+        windows = windows.advancing(packet(0x02, 0x0000))
+        assertTrue("transport sequence zero is a real video cursor", windows.hasVideoPacket)
+        assertEquals(0, windows.videoCursor)
+        windows = windows.advancing(packet(0x01, 0x4440, 0x5550, 0x6660))
+        assertEquals("telemetry cannot rewind group 0 after video", 0, windows.videoCursor)
+
+        windows = windows.advancing(packet(0x03, 0x7770))
+        assertEquals(0x7770, windows.ackedDataCursor)
+        windows = windows.advancing(packet(0x01, 0x8880, 0x9990, 0xAAA0))
+        assertEquals("telemetry cannot rewind group 1 after acked data", 0x7770, windows.ackedDataCursor)
+        assertEquals(0xAAA0, windows.extraCursor)
     }
 
     // ---- frame scanning ----------------------------------------------------------------------------
