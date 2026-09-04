@@ -14,6 +14,7 @@ import java.net.SocketTimeoutException
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Osmo 360 local viewfinder transport.
@@ -32,17 +33,18 @@ internal class OsmoLiveViewClient(
     interface Listener {
         fun onDatalinkReady()
         fun onAccessUnit(accessUnit: ByteArray)
-        fun onMetrics(videoPackets: Int, accessUnits: Int, droppedFrames: Int)
+        fun onMetrics(videoPackets: Int, accessUnits: Int, videoBytes: Long, droppedFrames: Int)
         fun onFailure(message: String)
     }
 
-    private val closed = AtomicBoolean(false)
+    private val lifecycle = TransportCloseBarrier()
+    private val started = AtomicBoolean(false)
     private val running = AtomicBoolean(false)
     private val sendLock = Any()
-    private val sockets = CopyOnWriteArrayList<DatagramSocket>()
     private val workers = CopyOnWriteArrayList<Thread>()
     private val videoPackets = AtomicInteger(0)
     private val accessUnits = AtomicInteger(0)
+    private val videoBytes = AtomicLong(0)
     private val sourceLock = Any()
     private val legacyAssembler = Osmo360FrameAssembler()
     private val sessionAssembler = Osmo360FrameAssembler()
@@ -72,12 +74,12 @@ internal class OsmoLiveViewClient(
     @Volatile private var cameraMediaCounter = 0x6490
 
     fun start(network: Network) {
-        check(workers.isEmpty()) { "Live-view client has already been started" }
+        check(started.compareAndSet(false, true)) { "Live-view client has already been started" }
         worker("osmodule.live.open") { open(network) }
     }
 
     fun requestKeyframe() {
-        if (!closed.get() && running.get()) {
+        if (!lifecycle.isClosed && running.get()) {
             val target = cameraAddress ?: return
             runCatching {
                 legacySocket?.let { sendLegacyStartup(it, target, compact = true) }
@@ -95,9 +97,7 @@ internal class OsmoLiveViewClient(
             val session = openUdp(network, PREFERRED_SESSION_PORT)
             legacySocket = legacy
             sessionSocket = session
-            sockets += legacy
-            sockets += session
-            running.set(true)
+            if (!lifecycle.runIfOpen { running.set(true) }) return
             openedAt = SystemClock.elapsedRealtime()
 
             startReceiver(legacy, isSession = false)
@@ -111,11 +111,11 @@ internal class OsmoLiveViewClient(
             sendLegacyStartup(legacy, target, compact = false)
             sendSessionBootstrap(session, target)
             startKeepalive()
-            if (!closed.get()) listener.onDatalinkReady()
+            if (!lifecycle.isClosed) listener.onDatalinkReady()
         } catch (e: InterruptedException) {
             Thread.currentThread().interrupt()
         } catch (e: Exception) {
-            if (!closed.get()) fail(e.message ?: "实时预览连接失败")
+            if (!lifecycle.isClosed) fail(e.message ?: "实时预览连接失败")
         }
     }
 
@@ -136,6 +136,7 @@ internal class OsmoLiveViewClient(
         cameraMediaCounter = 0x6490
         videoPackets.set(0)
         accessUnits.set(0)
+        videoBytes.set(0)
         legacyAssembler.reset()
         sessionAssembler.reset()
         activeVideoSource = null
@@ -153,7 +154,12 @@ internal class OsmoLiveViewClient(
                 candidate.soTimeout = RECEIVE_TIMEOUT_MS
                 runCatching { candidate.receiveBufferSize = UDP_RECEIVE_BUFFER_SIZE }
                 candidate.connect(InetSocketAddress(CAMERA_HOST, port))
-                Log.i(TAG, "UDP $preferredPort opened on ${candidate.localPort}")
+                if (!lifecycle.register(candidate)) throw InterruptedException("Live-view client closed")
+                Log.i(
+                    TAG,
+                    "UDP $preferredPort opened on ${candidate.localPort}; " +
+                        "receive buffer=${candidate.receiveBufferSize} bytes",
+                )
                 return candidate
             } catch (e: Exception) {
                 candidate.close()
@@ -166,47 +172,58 @@ internal class OsmoLiveViewClient(
     private fun sendTcpActivation(network: Network) {
         val subscribePayload = ByteArray(11).apply { this[10] = 0x03 }
         val subscribe = buildDumlFrame(0x08, 0x9988, 0x40, 0x02, 0x09, subscribePayload)
+        val control = Socket()
+        if (!lifecycle.register(control)) return
         runCatching {
-            Socket().use { control ->
+            control.use {
                 network.bindSocket(control)
                 control.connect(InetSocketAddress(CAMERA_HOST, TCP_CONTROL_PORT), TCP_TIMEOUT_MS)
                 control.soTimeout = 300
-                control.getOutputStream().apply {
-                    write(TCP_ACTIVATION)
-                    flush()
-                    Thread.sleep(120)
-                    write(subscribe)
-                    flush()
-                }
+                writeTcp(control, TCP_ACTIVATION)
+                Thread.sleep(120)
+                writeTcp(control, subscribe)
             }
             Log.i(TAG, "TCP 7001 activation and live-view subscription sent")
-        }.onFailure { Log.i(TAG, "TCP 7001 activation unavailable; continuing with UDP", it) }
+        }.onFailure {
+            if (!lifecycle.isClosed) {
+                Log.i(TAG, "TCP 7001 activation unavailable; continuing with UDP", it)
+            }
+        }
+        // `use` closed it first, so removing it cannot create an untracked-open-resource window.
+        lifecycle.unregister(control)
     }
 
     private fun startTcpKeepalive(network: Network) = worker("osmodule.live.tcp") {
+        val control = Socket()
+        if (!lifecycle.register(control)) return@worker
         try {
-            val control = Socket()
             network.bindSocket(control)
             control.connect(InetSocketAddress(CAMERA_HOST, TCP_CONTROL_PORT), TCP_TIMEOUT_MS)
             control.soTimeout = 300
             tcpKeepaliveSocket = control
-            control.getOutputStream().apply {
-                write(TCP_ACTIVATION)
-                flush()
-                while (running.get() && !closed.get()) {
-                    Thread.sleep(TCP_KEEPALIVE_MS)
-                    write(0)
-                    flush()
-                }
+            writeTcp(control, TCP_ACTIVATION)
+            while (running.get() && !lifecycle.isClosed) {
+                Thread.sleep(TCP_KEEPALIVE_MS)
+                writeTcp(control, byteArrayOf(0))
             }
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         } catch (e: Exception) {
-            if (running.get() && !closed.get()) Log.i(TAG, "TCP keepalive stopped", e)
+            if (running.get() && !lifecycle.isClosed) Log.i(TAG, "TCP keepalive stopped", e)
         } finally {
-            runCatching { tcpKeepaliveSocket?.close() }
-            tcpKeepaliveSocket = null
+            runCatching { control.close() }
+            lifecycle.unregister(control)
+            if (tcpKeepaliveSocket === control) tcpKeepaliveSocket = null
         }
+    }
+
+    private fun writeTcp(socket: Socket, bytes: ByteArray) {
+        check(lifecycle.runIfOpen {
+            socket.getOutputStream().apply {
+                write(bytes)
+                flush()
+            }
+        }) { "Live-view client closed" }
     }
 
     private fun startReceiver(datagram: DatagramSocket, isSession: Boolean) = worker(
@@ -215,7 +232,7 @@ internal class OsmoLiveViewClient(
         val source = if (isSession) VideoSource.SESSION else VideoSource.LEGACY
         val sourceAssembler = if (isSession) sessionAssembler else legacyAssembler
         val buffer = ByteArray(MAX_DATAGRAM_SIZE)
-        while (running.get() && !closed.get()) {
+        while (running.get() && !lifecycle.isClosed) {
             try {
                 val packet = DatagramPacket(buffer, buffer.size)
                 datagram.receive(packet)
@@ -230,7 +247,7 @@ internal class OsmoLiveViewClient(
             } catch (_: SocketTimeoutException) {
                 deliver(source, sourceAssembler.flushIfStalled())
             } catch (e: Exception) {
-                if (running.get() && !closed.get()) fail(e.message ?: "实时预览传输中断")
+                if (running.get() && !lifecycle.isClosed) fail(e.message ?: "实时预览传输中断")
                 return@worker
             }
         }
@@ -250,7 +267,7 @@ internal class OsmoLiveViewClient(
     /** Mimo advances the media receive window independently at roughly 40 Hz. */
     private fun startSessionAckPump() = worker("osmodule.live.ack.92ec") {
         try {
-            while (running.get() && !closed.get()) {
+            while (running.get() && !lifecycle.isClosed) {
                 sessionSocket?.let { socket ->
                     // This ACK only snapshots volatile receive cursors and does not consume command
                     // sequence numbers, so it must not wait behind the one-second bootstrap burst.
@@ -261,7 +278,7 @@ internal class OsmoLiveViewClient(
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         } catch (e: Exception) {
-            if (running.get() && !closed.get()) Log.i(TAG, "92ec ACK pump stopped", e)
+            if (running.get() && !lifecycle.isClosed) Log.i(TAG, "92ec ACK pump stopped", e)
         }
     }
 
@@ -308,7 +325,7 @@ internal class OsmoLiveViewClient(
         var round = 0
         var lastMetricsAt = 0L
         try {
-            while (running.get() && !closed.get()) {
+            while (running.get() && !lifecycle.isClosed) {
                 Thread.sleep(if (round == 0) 120 else KEEPALIVE_MS)
                 round++
                 val target = cameraAddress ?: continue
@@ -338,6 +355,7 @@ internal class OsmoLiveViewClient(
                     listener.onMetrics(
                         videoPackets.get(),
                         accessUnits.get(),
+                        videoBytes.get(),
                         legacyAssembler.droppedUnits + sessionAssembler.droppedUnits,
                     )
                 }
@@ -345,7 +363,7 @@ internal class OsmoLiveViewClient(
         } catch (_: InterruptedException) {
             Thread.currentThread().interrupt()
         } catch (e: Exception) {
-            if (running.get() && !closed.get()) fail(e.message ?: "实时预览保活失败")
+            if (running.get() && !lifecycle.isClosed) fail(e.message ?: "实时预览保活失败")
         }
     }
 
@@ -580,13 +598,16 @@ internal class OsmoLiveViewClient(
     }
 
     private fun sendLocked(socket: DatagramSocket, bytes: ByteArray) {
-        socket.send(DatagramPacket(bytes, bytes.size))
+        check(lifecycle.runIfOpen {
+            socket.send(DatagramPacket(bytes, bytes.size))
+        }) { "Live-view client closed" }
     }
 
     private fun deliver(source: VideoSource, units: List<ByteArray>) {
         if (units.isEmpty() || !selectVideoSource(source, units)) return
         units.forEach { accessUnit ->
             accessUnits.incrementAndGet()
+            videoBytes.addAndGet(accessUnit.size.toLong())
             listener.onAccessUnit(accessUnit)
         }
     }
@@ -636,36 +657,34 @@ internal class OsmoLiveViewClient(
         return false
     }
 
-    private fun worker(name: String, action: () -> Unit) {
-        Thread(action, name).also {
+    private fun worker(name: String, action: () -> Unit): Boolean {
+        val thread = Thread(action, name).also {
             it.isDaemon = true
-            workers += it
-            it.start()
+        }
+        return lifecycle.runIfOpen {
+            workers += thread
+            thread.start()
         }
     }
 
     private fun fail(message: String) {
-        if (closed.compareAndSet(false, true)) {
+        if (lifecycle.close()) {
             running.set(false)
-            sockets.forEach { runCatching { it.close() } }
-            runCatching { tcpKeepaliveSocket?.close() }
             listener.onFailure(message)
         }
     }
 
     override fun close() {
-        closed.set(true)
         running.set(false)
-        sockets.forEach { runCatching { it.close() } }
-        runCatching { tcpKeepaliveSocket?.close() }
+        lifecycle.close()
         val current = Thread.currentThread()
-        workers.forEach { it.interrupt() }
+        val closingWorkers = workers.toList()
+        closingWorkers.forEach { it.interrupt() }
         val joinDeadline = System.nanoTime() + CLOSE_JOIN_BUDGET_MS * 1_000_000L
-        workers.forEach { thread ->
+        closingWorkers.forEach { thread ->
             val remainingMs = ((joinDeadline - System.nanoTime()) / 1_000_000L).coerceAtLeast(0L)
             if (thread !== current && remainingMs > 0) runCatching { thread.join(remainingMs) }
         }
-        sockets.clear()
         workers.clear()
         legacySocket = null
         sessionSocket = null
@@ -692,7 +711,7 @@ internal class OsmoLiveViewClient(
         const val VIDEO_SOURCE_STALL_MS = 1_000L
         const val SOFT_RESUME_ROUNDS = 5
         const val LIGHT_SUSTAIN_ROUNDS = 10
-        const val UDP_RECEIVE_BUFFER_SIZE = 4 * 1024 * 1024
+        const val UDP_RECEIVE_BUFFER_SIZE = 8 * 1024 * 1024
         const val MAX_DATAGRAM_SIZE = 65_535
         const val SESSION_HEADER_SIZE = 20
         const val APP_ADDRESS = 0x02

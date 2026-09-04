@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 class RsdkControlModule : AppModule {
     override val descriptor = ModuleDescriptor(
         id = "rsdk-control",
-        displayName = "osmodule Remote Control",
+        displayName = "Osmo 360 RC",
         delivery = ModuleDelivery.EXTERNAL_APK,
         capabilities = setOf(
             Capabilities.CAMERA_EXCLUSIVE_MODE,

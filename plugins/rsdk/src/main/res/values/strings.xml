@@ -1,7 +1,7 @@
 <resources>
-    <string name="rsdk_plugin_name">osmodule Remote Control</string>
-    <string name="rsdk_plugin_ready">Remote Control is installed and compatible with Osmo 360.\n\nReturn to osmodule, connect the camera, then tap Remote beside its status for controls and live preview.</string>
-    <string name="rsdk_permissions_explanation">Permissions belong to this plugin APK, not to Base. Remote control uses Nearby devices/Bluetooth and Nearby Wi-Fi for local live preview. Location is also used by GPS sync; notifications are optional and only control whether its ongoing notification appears.</string>
+    <string name="rsdk_plugin_name">Osmo 360 RC</string>
+    <string name="rsdk_plugin_ready">Osmo 360 RC is installed.\n\nReturn to osmodule, connect the Osmo 360, then tap Remote beside its status for controls and live preview.</string>
+    <string name="rsdk_permissions_explanation">Step 1 of 2 · Permissions belong to the Osmo 360 RC plugin APK, not to Base. Remote control uses Nearby devices/Bluetooth and Nearby Wi-Fi for local live preview. Location is also used by GPS sync; notifications are optional and only control whether its ongoing notification appears.</string>
     <string name="rsdk_permissions_grant_remote">Allow remote control</string>
     <string name="rsdk_permissions_grant_gps">Allow GPS sync location</string>
     <string name="rsdk_permissions_grant_notifications">Allow GPS sync notifications (optional)</string>
@@ -11,5 +11,7 @@
     <string name="rsdk_permission_notification_status">GPS sync notifications (optional): %1$s</string>
     <string name="rsdk_permission_state_granted">granted</string>
     <string name="rsdk_permission_state_missing">not granted</string>
+    <string name="rsdk_autostart_explanation">Step 2 of 2 · HyperOS also requires Autostart for Base to open this plugin reliably. Android does not expose this as a runtime permission, so confirm it manually in the system screen.</string>
+    <string name="rsdk_autostart_settings">Allow Autostart in HyperOS</string>
     <string name="rsdk_permissions_settings">Open app permission settings</string>
 </resources>

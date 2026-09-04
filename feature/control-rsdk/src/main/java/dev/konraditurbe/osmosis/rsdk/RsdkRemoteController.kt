@@ -58,6 +58,7 @@ internal class RsdkRemoteController : CameraRemoteControl, RsdkSessionHub.Listen
     }
 
     override fun disconnect() {
+        RsdkWakeBroadcaster.cancel()
         RsdkSessionHub.close(REMOTE_CONSUMER)
         textModeLabel = null
         updateState(CameraRemoteState())

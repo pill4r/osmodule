@@ -30,8 +30,9 @@ internal object Osmo360PacketParser {
     )
 
     /**
-     * DJI pktType 0x02 is already frame packetized: byte 16 is the frame number and byte 18 is the
-     * fragment index. Keep that metadata instead of guessing picture boundaries from slice bytes.
+     * DJI pktType 0x02 is already frame packetized: byte 16 is the frame number, while byte 17's
+     * high bit and byte 18 form a 9-bit fragment index. Keep that metadata instead of guessing
+     * picture boundaries from slice bytes.
      */
     fun videoFragment(packet: ByteArray): VideoFragment? {
         val total = totalLength(packet)
@@ -44,7 +45,8 @@ internal object Osmo360PacketParser {
         }
         return VideoFragment(
             frameNumber = packet[16].toInt() and 0xFF,
-            fragmentIndex = packet[18].toInt() and 0xFF,
+            fragmentIndex = (if (packet[17].toInt() and 0x80 != 0) 0x100 else 0) or
+                (packet[18].toInt() and 0xFF),
             payload = packet.copyOfRange(payloadOffset, total),
         )
     }
@@ -113,10 +115,11 @@ internal class Osmo360FrameAssembler {
     private var currentFrameNumber = -1
     private var lastFragmentIndex = -1
     private var lastFragment: ByteArray? = null
+    private var discardCurrentFrame = false
     private var sps: ByteArray? = null
     private var pps: ByteArray? = null
     private var lastFeedAt = 0L
-    var droppedUnits: Int = 0
+    @Volatile var droppedUnits: Int = 0
         private set
 
     @Synchronized
@@ -129,18 +132,23 @@ internal class Osmo360FrameAssembler {
             startFrame(fragment.frameNumber)
         }
 
-        // A duplicate UDP fragment must not be appended twice; doing so shifts every macroblock after
-        // it and usually leaves only the next IDR decodable.
-        val duplicate = fragment.fragmentIndex == lastFragmentIndex &&
-            lastFragment?.contentEquals(fragment.payload) == true
-        if (!duplicate) {
-            if (frameBuffer.size() + fragment.payload.size > MAX_FRAME_SIZE) {
-                droppedUnits++
-                startFrame(fragment.frameNumber)
+        if (!discardCurrentFrame) {
+            // A duplicate UDP fragment must not be appended twice; doing so shifts every macroblock
+            // after it and usually leaves only the next IDR decodable.
+            val duplicate = fragment.fragmentIndex == lastFragmentIndex &&
+                lastFragment?.contentEquals(fragment.payload) == true
+            if (!duplicate) {
+                val expected = (lastFragmentIndex + 1) and FRAGMENT_INDEX_MASK
+                val sequenceBroken = lastFragmentIndex >= 0 && fragment.fragmentIndex != expected
+                val frameTooLarge = frameBuffer.size() + fragment.payload.size > MAX_FRAME_SIZE
+                if (sequenceBroken || frameTooLarge) {
+                    discardFrame()
+                } else {
+                    frameBuffer.write(fragment.payload, 0, fragment.payload.size)
+                    lastFragmentIndex = fragment.fragmentIndex
+                    lastFragment = fragment.payload.copyOf()
+                }
             }
-            frameBuffer.write(fragment.payload, 0, fragment.payload.size)
-            lastFragmentIndex = fragment.fragmentIndex
-            lastFragment = fragment.payload.copyOf()
         }
         lastFeedAt = monotonicMs()
         return output
@@ -160,6 +168,7 @@ internal class Osmo360FrameAssembler {
         currentFrameNumber = -1
         lastFragmentIndex = -1
         lastFragment = null
+        discardCurrentFrame = false
         sps = null
         pps = null
         lastFeedAt = 0L
@@ -171,9 +180,20 @@ internal class Osmo360FrameAssembler {
         currentFrameNumber = number
         lastFragmentIndex = -1
         lastFragment = null
+        discardCurrentFrame = false
+    }
+
+    private fun discardFrame() {
+        if (!discardCurrentFrame) droppedUnits++
+        discardCurrentFrame = true
+        frameBuffer.reset()
     }
 
     private fun finishFrame(): ByteArray? {
+        if (discardCurrentFrame) {
+            frameBuffer.reset()
+            return null
+        }
         val frame = frameBuffer.toByteArray()
         frameBuffer.reset()
         if (frame.isEmpty()) return null
@@ -247,7 +267,8 @@ internal class Osmo360FrameAssembler {
     }
 
     private companion object {
-        const val MAX_FRAME_SIZE = 4 * 1024 * 1024
+        const val MAX_FRAME_SIZE = 8 * 1024 * 1024
+        const val FRAGMENT_INDEX_MASK = 0x1FF
         const val STALL_FLUSH_MS = 250L
         fun monotonicMs(): Long = System.nanoTime() / 1_000_000L
     }
@@ -261,7 +282,7 @@ internal class Osmo360AnnexBAssembler {
     private var sps: ByteArray? = null
     private var pps: ByteArray? = null
     private var lastFeedAt = 0L
-    var droppedUnits: Int = 0
+    @Volatile var droppedUnits: Int = 0
         private set
 
     @Synchronized

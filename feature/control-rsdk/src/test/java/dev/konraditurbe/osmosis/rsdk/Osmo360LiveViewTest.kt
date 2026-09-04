@@ -37,6 +37,7 @@ class Osmo360LiveViewTest {
             payload = hex("00000001618011"),
         ).apply {
             this[16] = 0
+            this[17] = 0x0E
             this[18] = 7
         }
 
@@ -44,6 +45,16 @@ class Osmo360LiveViewTest {
 
         assertEquals(0, fragment.frameNumber)
         assertEquals(7, fragment.fragmentIndex)
+    }
+
+    @Test
+    fun parsesHighHalfOfNineBitFragmentIndex() {
+        val packet = sessionPacket(video = true, payload = hex("00000001618011")).apply {
+            this[17] = 0x8E.toByte()
+            this[18] = 7
+        }
+
+        assertEquals(263, Osmo360PacketParser.videoFragment(packet)!!.fragmentIndex)
     }
 
     @Test
@@ -80,6 +91,41 @@ class Osmo360LiveViewTest {
 
         assertEquals(1, output.size)
         assertArrayEquals(sps + pps + idr, output.single())
+    }
+
+    @Test
+    fun frameAssemblerDiscardsAFrameWithAMissingFragmentAndRecovers() {
+        val assembler = Osmo360FrameAssembler()
+        val brokenStart = hex("000000016180")
+        val brokenEnd = hex("11")
+        val nextPicture = hex("00000001618022")
+        val followingPicture = hex("00000001618033")
+
+        assertTrue(assembler.feed(fragment(30, 0, brokenStart)).isEmpty())
+        assertTrue(assembler.feed(fragment(30, 2, brokenEnd)).isEmpty())
+        assertTrue(assembler.feed(fragment(31, 0, nextPicture)).isEmpty())
+        val output = assembler.feed(fragment(32, 0, followingPicture))
+
+        assertEquals(1, assembler.droppedUnits)
+        assertEquals(1, output.size)
+        assertArrayEquals(nextPicture, output.single())
+    }
+
+    @Test
+    fun frameAssemblerAcceptsFragmentIndexHalfBoundaryAndIgnoresExactDuplicate() {
+        val assembler = Osmo360FrameAssembler()
+        val first = hex("000000016180")
+        val tail = hex("11")
+        val nextPicture = hex("00000001618022")
+
+        assertTrue(assembler.feed(fragment(40, 255, first)).isEmpty())
+        assertTrue(assembler.feed(fragment(40, 255, first)).isEmpty())
+        assertTrue(assembler.feed(fragment(40, 256, tail)).isEmpty())
+        val output = assembler.feed(fragment(41, 0, nextPicture))
+
+        assertEquals(0, assembler.droppedUnits)
+        assertEquals(1, output.size)
+        assertArrayEquals(first + tail, output.single())
     }
 
     @Test

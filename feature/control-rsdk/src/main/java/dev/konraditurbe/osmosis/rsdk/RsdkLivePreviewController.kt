@@ -37,6 +37,7 @@ internal data class RsdkPreviewState(
 /** Coordinates the Wi-Fi request, live UDP transport and MediaCodec lifecycle for the remote page. */
 internal class RsdkLivePreviewController(
     context: Context,
+    private val cameraAddress: String,
     private val ssid: String?,
     private val passphrase: String?,
     private val wpa3: Boolean,
@@ -54,6 +55,8 @@ internal class RsdkLivePreviewController(
     @Volatile private var joiner: ApJoiner? = null
     @Volatile private var client: OsmoLiveViewClient? = null
     @Volatile private var decoder: LiveVideoDecoder? = null
+    @Volatile private var ownership: RsdkCameraOwnership.Lease? = null
+    @Volatile private var ownershipRequest: RsdkCameraOwnership.Request? = null
     private var surface: Surface? = null
     @Volatile private var requested = false
     @Volatile private var current = initialState()
@@ -81,6 +84,39 @@ internal class RsdkLivePreviewController(
         }
         requested = true
         val run = generation.incrementAndGet()
+        publish(RsdkPreviewState(
+            RsdkPreviewPhase.JOINING,
+            string(R.string.rsdk_preview_connecting_wifi),
+            ssid.orEmpty(),
+        ))
+        val request = RsdkCameraOwnership.acquireAsync(appContext, cameraAddress) { result ->
+            ownershipAcquired(run, result)
+        }
+        if (run == generation.get() && requested) ownershipRequest = request
+        else request.cancel()
+    }
+
+    @Synchronized
+    private fun ownershipAcquired(run: Int, result: RsdkCameraOwnership.Result) {
+        if (run != generation.get() || !requested) {
+            (result as? RsdkCameraOwnership.Result.Granted)?.lease?.close()
+            return
+        }
+        ownershipRequest = null
+        when (result) {
+            is RsdkCameraOwnership.Result.Busy -> {
+                fail(run, result.reason)
+            }
+
+            is RsdkCameraOwnership.Result.Granted -> {
+                ownership = result.lease
+                startTransport(run)
+            }
+        }
+    }
+
+    /** Called only after this generation owns both the cross-process and process-local guards. */
+    private fun startTransport(run: Int) {
         presentedFrames.set(0)
         lastMetricFrames = 0
         lastMetricAt = SystemClock.elapsedRealtime()
@@ -121,11 +157,6 @@ internal class RsdkLivePreviewController(
         })
         decoder = liveDecoder
         liveDecoder.attachSurface(surface)
-        publish(RsdkPreviewState(
-            RsdkPreviewPhase.JOINING,
-            string(R.string.rsdk_preview_connecting_wifi),
-            ssid.orEmpty(),
-        ))
 
         val ap = ApJoiner(appContext, object : ApJoiner.Listener {
             override fun onLog(s: String) {
@@ -171,15 +202,19 @@ internal class RsdkLivePreviewController(
         }
     }
 
+    @Synchronized
     private fun openDatalink(run: Int, network: Network, attempt: Int) {
         if (run != generation.get() || !requested) return
         client?.close()
+        lastMetricFrames = presentedFrames.get()
+        lastMetricAt = SystemClock.elapsedRealtime()
         publish(RsdkPreviewState(
             RsdkPreviewPhase.CONNECTING,
             string(R.string.rsdk_preview_establishing),
             string(R.string.rsdk_preview_udp_port, datalinkPort),
         ))
         lateinit var liveClient: OsmoLiveViewClient
+        var lastMetricBytes = 0L
         liveClient = OsmoLiveViewClient(
             port = datalinkPort,
             tcpPoke = tcpPoke,
@@ -224,20 +259,29 @@ internal class RsdkLivePreviewController(
                     }
                 }
 
-                override fun onMetrics(videoPackets: Int, accessUnits: Int, droppedFrames: Int) {
+                override fun onMetrics(
+                    videoPackets: Int,
+                    accessUnits: Int,
+                    videoBytes: Long,
+                    droppedFrames: Int,
+                ) {
                     if (run != generation.get() || !requested || client !== liveClient) return
                     val now = SystemClock.elapsedRealtime()
                     val elapsed = (now - lastMetricAt).coerceAtLeast(1L)
                     val frameCount = presentedFrames.get()
                     val fps = ((frameCount - lastMetricFrames) * 1_000L / elapsed).toInt()
+                    val bitrateMbps = (videoBytes - lastMetricBytes).coerceAtLeast(0L) * 8.0 /
+                        elapsed / 1_000.0
                     Log.i(
                         TAG,
                         "stream metrics attempt=$attempt packets=$videoPackets accessUnits=$accessUnits " +
-                            "presented=$frameCount fps=$fps dropped=$droppedFrames",
+                            "presented=$frameCount fps=$fps bitrate=${"%.2f".format(bitrateMbps)}Mbps " +
+                            "dropped=$droppedFrames",
                     )
-                    if (firstFrameAt == 0L) return
+                    lastMetricBytes = videoBytes
                     lastMetricFrames = frameCount
                     lastMetricAt = now
+                    if (firstFrameAt == 0L) return
                     val codec = codecLabel
                     val dimensions = if (pictureWidth > 0 && pictureHeight > 0) {
                         "$pictureWidth × $pictureHeight"
@@ -260,6 +304,7 @@ internal class RsdkLivePreviewController(
                                 dimensions,
                                 codec ?: string(R.string.rsdk_preview_video),
                                 fps.coerceAtLeast(0),
+                                bitrateMbps,
                                 dropped,
                             ),
                             fps = fps,
@@ -287,12 +332,16 @@ internal class RsdkLivePreviewController(
         requested = false
         generation.incrementAndGet()
         main.removeCallbacksAndMessages(null)
+        ownershipRequest?.cancel()
+        ownershipRequest = null
         client?.close()
         client = null
         decoder?.close()
         decoder = null
         joiner?.release()
         joiner = null
+        ownership?.close()
+        ownership = null
         publish(if (canStart) {
             RsdkPreviewState(
                 RsdkPreviewPhase.IDLE,
@@ -318,12 +367,16 @@ internal class RsdkLivePreviewController(
         requested = false
         generation.incrementAndGet()
         main.removeCallbacksAndMessages(null)
+        ownershipRequest?.cancel()
+        ownershipRequest = null
         client?.close()
         client = null
         decoder?.close()
         decoder = null
         joiner?.release()
         joiner = null
+        ownership?.close()
+        ownership = null
         publish(RsdkPreviewState(
             RsdkPreviewPhase.FAILED,
             message,

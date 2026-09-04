@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="dev.konraditurbe.osmosis.permission.CAMERA_SESSION" />
+
+    <queries>
+        <provider android:authorities="dev.konraditurbe.osmosis.camera-session" />
+    </queries>
+
     <application
         android:name=".RsdkPluginApp"
         android:allowBackup="false"
@@ -34,7 +40,7 @@
                 <action android:name="dev.konraditurbe.osmosis.plugin.BIND" />
             </intent-filter>
             <meta-data android:name="dev.konraditurbe.osmosis.plugin.ID" android:value="rsdk-control" />
-            <meta-data android:name="dev.konraditurbe.osmosis.plugin.NAME" android:value="osmodule Remote Control" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.NAME" android:value="Osmo 360 RC" />
             <meta-data android:name="dev.konraditurbe.osmosis.plugin.VERSION" android:value="5" />
             <meta-data android:name="dev.konraditurbe.osmosis.plugin.PROTOCOL_MIN" android:value="1" />
             <meta-data android:name="dev.konraditurbe.osmosis.plugin.PROTOCOL_MAX" android:value="1" />

@@ -10,8 +10,8 @@
     <string name="rsdk_notif_healthy">healthy</string>
     <string name="rsdk_notif_not_healthy">not healthy</string>
 
-    <string name="rsdk_remote_title">Camera remote</string>
-    <string name="rsdk_close_remote">Close remote</string>
+    <string name="rsdk_remote_title">Osmo 360 RC</string>
+    <string name="rsdk_close_remote">Close Osmo 360 RC</string>
     <string name="rsdk_mode_short">Mode</string>
     <string name="rsdk_mode_unknown">Mode —</string>
     <string name="rsdk_mode_select">Select a mode</string>
@@ -26,7 +26,7 @@
     <string name="rsdk_mode_360_description">Dual-lens 360° capture</string>
     <string name="rsdk_mode_single_lens_description">Directional single-lens capture</string>
     <string name="rsdk_mode_picker_super_night">Super night</string>
-    <string name="rsdk_mode_picker_hint">Choosing a mode returns to Remote and switches the camera</string>
+    <string name="rsdk_mode_picker_hint">Choosing a mode returns to Osmo 360 RC and switches the camera</string>
     <string name="rsdk_select_mode_first">Select a shooting mode first.</string>
     <string name="rsdk_mode_action_timeout">The camera did not finish switching modes. Action cancelled.</string>
     <string name="rsdk_prepare_photo">Switching to %1$s before capture…</string>
@@ -37,7 +37,7 @@
     <string name="rsdk_controls_subtitle">Mode, connection and device</string>
     <string name="rsdk_close_controls">Close controls</string>
     <string name="rsdk_approval_hint">The first connection may need approval on the camera screen.</string>
-    <string name="rsdk_best_effort_notice">This module supports Osmo 360. R-SDK controls and the local live-view protocol can vary by firmware; rejected commands and preview failures are reported, and recording falls back to the generic RECORD key when direct control is unsupported.</string>
+    <string name="rsdk_best_effort_notice">Osmo 360 RC uses R-SDK controls and a local live-view protocol that can vary by firmware; rejected commands and preview failures are reported, and recording falls back to the generic RECORD key when direct control is unsupported.</string>
     <string name="rsdk_camera_identity">%1$s · %2$s</string>
     <string name="rsdk_preview_content_description">Interactive 360-degree live camera preview</string>
     <string name="rsdk_preview_live">360° LIVE</string>
@@ -63,7 +63,7 @@
         <item quantity="one"> · %1$d dropped</item>
         <item quantity="other"> · %1$d dropped</item>
     </plurals>
-    <string name="rsdk_preview_metrics">%1$s · %2$s · %3$d fps%4$s</string>
+    <string name="rsdk_preview_metrics">%1$s · %2$s · %3$d fps · %4$.1f Mbps%5$s</string>
     <string name="rsdk_preview_stream_failed">Live-preview transport stopped</string>
     <string name="rsdk_preview_decode_failed">This device couldn’t decode the camera preview</string>
     <string name="rsdk_preview_paused">Live preview paused</string>
@@ -72,7 +72,7 @@
     <string name="rsdk_preview_permission_missing">Wi-Fi permission required</string>
     <string name="rsdk_preview_permission_hint">Allow Nearby Wi-Fi, then retry</string>
     <string name="rsdk_preview_unavailable">Live preview unavailable</string>
-    <string name="rsdk_preview_unavailable_hint">Open Remote from the camera media screen to pass the local Wi-Fi connection</string>
+    <string name="rsdk_preview_unavailable_hint">Open Osmo 360 RC from the camera media screen to pass the local Wi-Fi connection</string>
     <string name="rsdk_state_disconnected">Disconnected</string>
     <string name="rsdk_state_connecting">Connecting…</string>
     <string name="rsdk_state_connected">Connected</string>
@@ -141,5 +141,5 @@
     <string name="rsdk_result_transport_failed">transport failed</string>
     <string name="rsdk_result_detail"> · %1$s</string>
     <string name="rsdk_permission_denied">A required Bluetooth, location or notification permission was denied.</string>
-    <string name="rsdk_module_missing">R-SDK control module is unavailable.</string>
+    <string name="rsdk_module_missing">Osmo 360 RC is unavailable.</string>
 </resources>

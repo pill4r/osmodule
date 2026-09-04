@@ -10,8 +10,8 @@
     <string name="rsdk_notif_healthy">正常</string>
     <string name="rsdk_notif_not_healthy">异常</string>
 
-    <string name="rsdk_remote_title">相机远控</string>
-    <string name="rsdk_close_remote">关闭远控</string>
+    <string name="rsdk_remote_title">Osmo 360 遥控</string>
+    <string name="rsdk_close_remote">关闭 Osmo 360 遥控</string>
     <string name="rsdk_mode_short">模式</string>
     <string name="rsdk_mode_unknown">模式 —</string>
     <string name="rsdk_mode_select">请选择模式</string>
@@ -26,7 +26,7 @@
     <string name="rsdk_mode_360_description">双镜头 360° 全景拍摄</string>
     <string name="rsdk_mode_single_lens_description">单镜头定向拍摄</string>
     <string name="rsdk_mode_picker_super_night">超级夜景</string>
-    <string name="rsdk_mode_picker_hint">点击模式后立即返回远控并切换相机</string>
+    <string name="rsdk_mode_picker_hint">点击模式后立即返回 Osmo 360 遥控并切换相机</string>
     <string name="rsdk_select_mode_first">请先选择拍摄模式。</string>
     <string name="rsdk_mode_action_timeout">相机未完成模式切换，操作已取消。</string>
     <string name="rsdk_prepare_photo">拍摄前正在切换到%1$s…</string>
@@ -37,7 +37,7 @@
     <string name="rsdk_controls_subtitle">模式、连接与设备</string>
     <string name="rsdk_close_controls">关闭控制面板</string>
     <string name="rsdk_approval_hint">首次连接可能需要在相机屏幕上确认。</string>
-    <string name="rsdk_best_effort_notice">此模块仅适用于 Osmo 360。R-SDK 控制与本地实时预览协议可能随固件变化；被拒绝的命令和预览失败会明确显示，直接录像控制不受支持时会回退到通用 RECORD 按键。</string>
+    <string name="rsdk_best_effort_notice">Osmo 360 遥控使用 R-SDK 控制和本地实时预览协议，这些协议可能随固件变化；被拒绝的命令和预览失败会明确显示，直接录像控制不受支持时会回退到通用 RECORD 按键。</string>
     <string name="rsdk_camera_identity">%1$s · %2$s</string>
     <string name="rsdk_preview_content_description">可交互的相机 360° 实时预览</string>
     <string name="rsdk_preview_live">360° 实时</string>
@@ -62,7 +62,7 @@
     <plurals name="rsdk_preview_dropped_frames">
         <item quantity="other"> · 丢帧 %1$d</item>
     </plurals>
-    <string name="rsdk_preview_metrics">%1$s · %2$s · %3$d fps%4$s</string>
+    <string name="rsdk_preview_metrics">%1$s · %2$s · %3$d fps · %4$.1f Mbps%5$s</string>
     <string name="rsdk_preview_stream_failed">实时预览传输已中断</string>
     <string name="rsdk_preview_decode_failed">当前设备无法解码相机预览</string>
     <string name="rsdk_preview_paused">实时预览已暂停</string>
@@ -71,7 +71,7 @@
     <string name="rsdk_preview_permission_missing">缺少 Wi-Fi 权限</string>
     <string name="rsdk_preview_permission_hint">允许“附近的 Wi-Fi”后重试</string>
     <string name="rsdk_preview_unavailable">暂无实时画面</string>
-    <string name="rsdk_preview_unavailable_hint">请先从相机媒体页进入远控，以传递本地 Wi-Fi 连接</string>
+    <string name="rsdk_preview_unavailable_hint">请先从相机媒体页进入 Osmo 360 遥控，以传递本地 Wi-Fi 连接</string>
     <string name="rsdk_state_disconnected">未连接</string>
     <string name="rsdk_state_connecting">连接中…</string>
     <string name="rsdk_state_connected">已连接</string>
@@ -140,5 +140,5 @@
     <string name="rsdk_result_transport_failed">传输失败</string>
     <string name="rsdk_result_detail"> · %1$s</string>
     <string name="rsdk_permission_denied">所需的蓝牙、位置或通知权限被拒绝。</string>
-    <string name="rsdk_module_missing">R-SDK 控制模块不可用。</string>
+    <string name="rsdk_module_missing">Osmo 360 遥控不可用。</string>
 </resources>

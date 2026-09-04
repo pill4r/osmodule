@@ -2,16 +2,13 @@ package dev.konraditurbe.osmosis.rsdk
 
 import android.bluetooth.BluetoothManager
 import android.content.Context
-import dev.konraditurbe.osmosis.session.CameraLeaseResult
-import dev.konraditurbe.osmosis.session.CameraSessionCoordinator
-import dev.konraditurbe.osmosis.session.CameraSessionLease
-import dev.konraditurbe.osmosis.session.CameraSessionPurpose
+import java.util.Locale
 
 /**
  * One process-wide R-SDK connection shared by remote-control and GPS consumers.
  *
- * A second consumer may attach to the same camera, but a different camera or a live media lease is
- * rejected. The last consumer to detach closes GATT and releases the process camera lease.
+ * [open] only accepts work; cross-process arbitration completes asynchronously. A generation gate
+ * makes a close/reconnect win over a late grant before any GATT transport can be constructed.
  */
 internal object RsdkSessionHub {
     interface Listener {
@@ -29,11 +26,14 @@ internal object RsdkSessionHub {
     private val lock = Any()
     private val consumers = linkedMapOf<String, Listener>()
     private var controller: RsdkController? = null
-    private var lease: CameraSessionLease? = null
+    private var lease: RsdkCameraOwnership.Lease? = null
+    private var ownershipRequest: RsdkCameraOwnership.Request? = null
+    private var openingGeneration: Long? = null
     private var cameraAddress: String? = null
     private var cameraName: String? = null
     private var connected = false
     private var generation = 0L
+    private var closingGeneration: Long? = null
 
     fun open(
         context: Context,
@@ -42,10 +42,18 @@ internal object RsdkSessionHub {
         consumerId: String,
         listener: Listener,
     ): Boolean {
-        val normalized = address.uppercase()
+        val normalized = address.trim().uppercase(Locale.ROOT)
+        val currentGeneration: Long
         synchronized(lock) {
-            val existing = controller
-            if (existing != null) {
+            if (normalized.isBlank()) {
+                listener.onFailed("Invalid camera address")
+                return false
+            }
+            if (closingGeneration != null) {
+                listener.onFailed("R-SDK is still closing the previous camera connection")
+                return false
+            }
+            controller?.let {
                 if (cameraAddress != normalized) {
                     listener.onFailed("R-SDK is already connected to ${cameraName ?: cameraAddress}")
                     return false
@@ -55,49 +63,128 @@ internal object RsdkSessionHub {
                 if (connected) listener.onConnected()
                 return true
             }
-
-            val acquired = CameraSessionCoordinator.acquire(
-                ownerId = OWNER_ID,
-                cameraAddress = normalized,
-                purpose = CameraSessionPurpose.RSDK_CONTROL,
-            )
-            if (acquired is CameraLeaseResult.Busy) {
-                listener.onFailed(
-                    "Camera is busy in ${acquired.active.purpose.name.lowercase().replace('_', ' ')} mode",
-                )
-                return false
+            openingGeneration?.let {
+                if (cameraAddress != normalized) {
+                    listener.onFailed("R-SDK is already opening ${cameraName ?: cameraAddress}")
+                    return false
+                }
+                consumers[consumerId] = listener
+                listener.onConnecting(normalized, cameraName ?: name)
+                return true
             }
 
-            lease = (acquired as CameraLeaseResult.Granted).lease
             consumers[consumerId] = listener
             cameraAddress = normalized
             cameraName = name
             connected = false
-            val currentGeneration = ++generation
-            val newController = RsdkController(context.applicationContext, SessionCallbacks(currentGeneration))
-            controller = newController
+            currentGeneration = ++generation
+            openingGeneration = currentGeneration
             listener.onConnecting(normalized, name)
+        }
 
-            return runCatching {
-                val device = context.getSystemService(BluetoothManager::class.java)?.adapter?.getRemoteDevice(normalized)
-                    ?: error("Bluetooth adapter unavailable")
-                newController.connect(device)
+        val appContext = context.applicationContext
+        val request = RsdkCameraOwnership.acquireAsync(appContext, normalized) { result ->
+            completeOpen(appContext, currentGeneration, normalized, result)
+        }
+        val retain = synchronized(lock) {
+            if (openingGeneration == currentGeneration) {
+                ownershipRequest = request
                 true
-            }.getOrElse { error ->
-                failGeneration(currentGeneration, error.message ?: "Unable to connect to camera")
+            } else {
                 false
+            }
+        }
+        if (!retain) request.cancel()
+        return true
+    }
+
+    private fun completeOpen(
+        context: Context,
+        callbackGeneration: Long,
+        normalizedAddress: String,
+        result: RsdkCameraOwnership.Result,
+    ) {
+        when (result) {
+            is RsdkCameraOwnership.Result.Busy -> {
+                failOpening(callbackGeneration, result.reason)
+            }
+
+            is RsdkCameraOwnership.Result.Granted -> {
+                val nextController = synchronized(lock) {
+                    if (openingGeneration != callbackGeneration ||
+                        generation != callbackGeneration ||
+                        consumers.isEmpty()
+                    ) {
+                        null
+                    } else {
+                        ownershipRequest = null
+                        openingGeneration = null
+                        lease = result.lease
+                        RsdkController(context, SessionCallbacks(callbackGeneration)).also {
+                            controller = it
+                        }
+                    }
+                }
+                if (nextController == null) {
+                    result.lease.close()
+                    return
+                }
+
+                runCatching {
+                    val device = context.getSystemService(BluetoothManager::class.java)
+                        ?.adapter
+                        ?.getRemoteDevice(normalizedAddress)
+                        ?: error("Bluetooth adapter unavailable")
+                    nextController.connect(device)
+                }.onFailure { error ->
+                    failGeneration(
+                        callbackGeneration,
+                        error.message ?: "Unable to connect to camera",
+                    )
+                }
             }
         }
     }
 
-    fun close(consumerId: String) {
-        val toClose: RsdkController?
-        synchronized(lock) {
-            consumers.remove(consumerId)
-            if (consumers.isNotEmpty()) return
-            toClose = clearLocked()
+    private fun failOpening(callbackGeneration: Long, reason: String) {
+        val targets = synchronized(lock) {
+            if (openingGeneration != callbackGeneration || generation != callbackGeneration) {
+                return
+            }
+            ownershipRequest = null
+            openingGeneration = null
+            ++generation
+            connected = false
+            cameraAddress = null
+            cameraName = null
+            consumers.values.toList().also { consumers.clear() }
         }
-        toClose?.disconnect()
+        targets.forEach { it.onFailed(reason) }
+    }
+
+    fun close(consumerId: String) {
+        var pendingRequest: RsdkCameraOwnership.Request? = null
+        var closing: ClosingSession? = null
+        synchronized(lock) {
+            if (consumers.remove(consumerId) == null) return
+            if (consumers.isNotEmpty()) return
+            if (openingGeneration != null) {
+                pendingRequest = ownershipRequest
+                ownershipRequest = null
+                openingGeneration = null
+                ++generation
+                connected = false
+                cameraAddress = null
+                cameraName = null
+            } else if (controller != null || lease != null) {
+                closing = clearLocked()
+            } else {
+                cameraAddress = null
+                cameraName = null
+            }
+        }
+        pendingRequest?.cancel()
+        closing?.let(::finishClosing)
     }
 
     fun queryVersion(): Boolean = controller()?.queryVersion() ?: false
@@ -112,46 +199,74 @@ internal object RsdkSessionHub {
 
     private fun controller(): RsdkController? = synchronized(lock) { controller.takeIf { connected } }
 
-    private fun listeners(generation: Long): List<Listener> = synchronized(lock) {
-        if (generation != this.generation) emptyList() else consumers.values.toList()
+    private fun listeners(callbackGeneration: Long): List<Listener> = synchronized(lock) {
+        if (callbackGeneration != generation) emptyList() else consumers.values.toList()
     }
 
     private fun failGeneration(callbackGeneration: Long, reason: String) {
         val targets: List<Listener>
-        val toClose: RsdkController?
+        val closing: ClosingSession
         synchronized(lock) {
-            if (callbackGeneration != generation) return
+            if (callbackGeneration != generation || controller == null) return
             targets = consumers.values.toList()
-            toClose = clearLocked()
+            closing = clearLocked()
         }
+        finishClosing(closing)
         targets.forEach { it.onFailed(reason) }
-        toClose?.disconnect()
     }
 
     private fun disconnectedGeneration(callbackGeneration: Long) {
         val targets: List<Listener>
-        val toClose: RsdkController?
+        val closing: ClosingSession
         synchronized(lock) {
-            if (callbackGeneration != generation) return
+            if (callbackGeneration != generation || controller == null) return
             targets = consumers.values.toList()
-            toClose = clearLocked()
+            closing = clearLocked()
         }
+        finishClosing(closing)
         targets.forEach { it.onDisconnected() }
-        toClose?.disconnect()
     }
 
-    /** Caller closes the returned controller outside the lock. */
-    private fun clearLocked(): RsdkController? {
-        val old = controller
+    private data class ClosingSession(
+        val controller: RsdkController?,
+        val lease: RsdkCameraOwnership.Lease?,
+        val generation: Long,
+    ) {
+        /** Keep arbitration held until the old GATT is synchronously disconnected and closed. */
+        fun closeTransportThenRelease() {
+            try {
+                controller?.disconnect()
+            } finally {
+                lease?.close()
+            }
+        }
+    }
+
+    private fun finishClosing(closing: ClosingSession) {
+        try {
+            closing.closeTransportThenRelease()
+        } finally {
+            synchronized(lock) {
+                if (closingGeneration == closing.generation) closingGeneration = null
+            }
+        }
+    }
+
+    /** Detaches state under [lock]; the caller tears down transport before releasing ownership. */
+    private fun clearLocked(): ClosingSession {
+        val closingId = ++generation
+        check(closingGeneration == null) { "R-SDK close already in progress" }
+        closingGeneration = closingId
+        val closing = ClosingSession(controller, lease, closingId)
         controller = null
+        lease = null
+        ownershipRequest = null
+        openingGeneration = null
         connected = false
         consumers.clear()
         cameraAddress = null
         cameraName = null
-        lease?.close()
-        lease = null
-        generation++
-        return old
+        return closing
     }
 
     private class SessionCallbacks(private val callbackGeneration: Long) : RsdkController.Listener {
@@ -180,6 +295,4 @@ internal object RsdkSessionHub {
         override fun onDisconnected() = RsdkSessionHub.disconnectedGeneration(callbackGeneration)
         override fun onFailed(reason: String) = RsdkSessionHub.failGeneration(callbackGeneration, reason)
     }
-
-    private const val OWNER_ID = "rsdk-session-hub"
 }

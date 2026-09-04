@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -30,7 +31,7 @@ class RsdkPluginHomeActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(LinearLayout(this).apply {
+        val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(28), dp(36), dp(28), dp(28))
@@ -81,6 +82,23 @@ class RsdkPluginHomeActivity : AppCompatActivity() {
                     ),
                 )
             }
+            if (isXiaomiFamilyDevice()) {
+                addView(TextView(this@RsdkPluginHomeActivity).apply {
+                    text = getString(R.string.rsdk_autostart_explanation)
+                    textSize = 14f
+                    setPadding(0, dp(18), 0, dp(8))
+                })
+                addView(
+                    MaterialButton(this@RsdkPluginHomeActivity).apply {
+                        text = getString(R.string.rsdk_autostart_settings)
+                        setOnClickListener { openAutostartSettings() }
+                    },
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ),
+                )
+            }
             addView(
                 MaterialButton(this@RsdkPluginHomeActivity).apply {
                     text = getString(R.string.rsdk_permissions_settings)
@@ -98,6 +116,10 @@ class RsdkPluginHomeActivity : AppCompatActivity() {
                     LinearLayout.LayoutParams.WRAP_CONTENT,
                 ),
             )
+        }
+        setContentView(ScrollView(this).apply {
+            isFillViewport = true
+            addView(content)
         })
         refreshStatus()
     }
@@ -160,6 +182,35 @@ class RsdkPluginHomeActivity : AppCompatActivity() {
 
     private fun notificationPermissions() =
         RsdkPermissionPolicy.notificationPermissions(Build.VERSION.SDK_INT)
+
+    private fun openAutostartSettings() {
+        val autostart = Intent("miui.intent.action.OP_AUTO_START").apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            setPackage("com.miui.securitycenter")
+            putExtra("extra_pkgname", packageName)
+        }
+        val permissionEditor = Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            setPackage("com.miui.securitycenter")
+            putExtra("extra_pkgname", packageName)
+        }
+        if (runCatching { startActivity(autostart) }.isFailure &&
+            runCatching { startActivity(permissionEditor) }.isFailure
+        ) {
+            startActivity(
+                Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:$packageName"),
+                ),
+            )
+        }
+    }
+
+    private fun isXiaomiFamilyDevice(): Boolean =
+        Build.MANUFACTURER.equals("Xiaomi", ignoreCase = true) ||
+            Build.BRAND.equals("Xiaomi", ignoreCase = true) ||
+            Build.BRAND.equals("Redmi", ignoreCase = true) ||
+            Build.BRAND.equals("POCO", ignoreCase = true)
 
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
 }

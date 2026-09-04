@@ -158,6 +158,7 @@ class RsdkRemoteActivity : AppCompatActivity(), CameraRemoteControl.Listener {
         })
         livePreview = RsdkLivePreviewController(
             context = this,
+            cameraAddress = cameraAddress,
             ssid = intent.getStringExtra(EXTRA_WIFI_SSID),
             passphrase = intent.getStringExtra(EXTRA_WIFI_PASSPHRASE),
             wpa3 = intent.getBooleanExtra(EXTRA_WIFI_WPA3, false),

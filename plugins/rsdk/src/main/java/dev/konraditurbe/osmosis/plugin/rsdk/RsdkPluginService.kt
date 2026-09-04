@@ -8,6 +8,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import dev.konraditurbe.osmosis.modules.DeviceModels
 import dev.konraditurbe.osmosis.plugin.IOsmosisPlugin
 import dev.konraditurbe.osmosis.plugin.PluginContract
 import dev.konraditurbe.osmosis.plugin.PluginDescriptor
@@ -19,7 +20,7 @@ class RsdkPluginService : Service() {
         id = PluginContract.RSDK_PLUGIN_ID,
         // Must exactly match the service metadata in AndroidManifest.xml. Base compares both views
         // before accepting a panel PendingIntent, so drift here intentionally blocks the plugin.
-        name = "osmodule Remote Control",
+        name = "Osmo 360 RC",
         version = 5,
         protocolMin = 1,
         protocolMax = 1,
@@ -56,6 +57,13 @@ class RsdkPluginService : Service() {
             enforceHostCaller()
             val address = request.getString(PluginContract.KEY_CAMERA_ADDRESS).orEmpty().uppercase()
             val cameraIntent = if (MAC.matches(address)) {
+                val requestedModel = request.getString(PluginContract.KEY_CAMERA_DEVICE_MODEL)
+                // Protocol-v1 Base builds before the model-key addition launched this plugin only
+                // for Osmo 360, so a missing key remains a deliberate compatibility case. A present
+                // key is authoritative and must never route R-SDK commands to another camera family.
+                require(
+                    requestedModel.isNullOrBlank() || requestedModel == DeviceModels.OSMO_360,
+                ) { "Osmo 360 RC only supports Osmo 360" }
                 Intent(this@RsdkPluginService, RsdkRemoteActivity::class.java)
                     .putExtra(RsdkRemoteActivity.EXTRA_CAMERA_ADDRESS, address)
                     .putExtra(

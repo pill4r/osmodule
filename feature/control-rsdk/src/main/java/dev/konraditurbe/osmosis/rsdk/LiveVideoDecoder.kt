@@ -28,6 +28,7 @@ internal class LiveVideoDecoder(private val listener: Listener) : AutoCloseable 
     private var outputThread: Thread? = null
     private var outputRunning = false
     private var pendingKeyframe: ByteArray? = null
+    private var awaitingKeyframe = true
     private var ptsUs = 0L
     private var width = DEFAULT_WIDTH
     private var height = DEFAULT_HEIGHT
@@ -39,7 +40,12 @@ internal class LiveVideoDecoder(private val listener: Listener) : AutoCloseable 
         if (surface === next) return@synchronized
         releaseCodecLocked()
         surface = next
-        configureIfReadyLocked()?.let { decoder -> pendingKeyframe?.let { queueLocked(decoder, it, true) } }
+        val decoder = configureIfReadyLocked()
+        val bootstrap = pendingKeyframe
+        if (decoder != null && bootstrap != null && queueLocked(decoder, bootstrap, true)) {
+            awaitingKeyframe = false
+            pendingKeyframe = null
+        }
     }
 
     fun decode(accessUnit: ByteArray): Boolean = synchronized(lock) {
@@ -57,8 +63,31 @@ internal class LiveVideoDecoder(private val listener: Listener) : AutoCloseable 
         if (keyframe) pendingKeyframe = accessUnit.copyOf()
 
         val decoder = codec ?: configureIfReadyLocked() ?: return@synchronized false
-        if (keyframe) pendingKeyframe = null
-        queueLocked(decoder, accessUnit, keyframe)
+        if (awaitingKeyframe) {
+            val bootstrap = pendingKeyframe ?: return@synchronized false
+            val queued = queueLocked(decoder, bootstrap, true)
+            if (!queued) return@synchronized false
+            awaitingKeyframe = false
+            pendingKeyframe = null
+            if (keyframe) return@synchronized true
+
+            // The current inter-frame arrived while a previously blocked keyframe was retried.
+            // Queue it too so the next picture cannot depend on a frame silently skipped here.
+            val currentQueued = queueLocked(decoder, accessUnit, false)
+            if (!currentQueued) awaitingKeyframe = true
+            return@synchronized currentQueued
+        }
+
+        val queued = queueLocked(decoder, accessUnit, keyframe)
+        if (queued && keyframe) pendingKeyframe = null
+        if (!queued) {
+            // A missing inter-frame can invalidate every dependent picture in the GOP. Stop
+            // feeding dependent frames until a fresh IDR/IRAP arrives instead of presenting
+            // corruption; a failed keyframe remains pending so the next call can retry it.
+            awaitingKeyframe = true
+            if (!keyframe) pendingKeyframe = null
+        }
+        queued
     }
 
     private fun configureIfReadyLocked(): MediaCodec? {
@@ -66,8 +95,9 @@ internal class LiveVideoDecoder(private val listener: Listener) : AutoCloseable 
         val target = surface?.takeIf { it.isValid } ?: return null
         val kind = codecKind ?: return null
         val format = MediaFormat.createVideoFormat(kind.mime, width, height).apply {
-            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, 4 * 1024 * 1024)
-            setInteger(MediaFormat.KEY_FRAME_RATE, 30)
+            setInteger(MediaFormat.KEY_MAX_INPUT_SIZE, MAX_INPUT_SIZE)
+            setInteger(MediaFormat.KEY_FRAME_RATE, FRAME_RATE_HINT)
+            setFloat(MediaFormat.KEY_OPERATING_RATE, OPERATING_RATE_HINT)
             setInteger(MediaFormat.KEY_PRIORITY, 0)
             if (Build.VERSION.SDK_INT >= 30) setInteger(MediaFormat.KEY_LOW_LATENCY, 1)
             when (kind) {
@@ -90,6 +120,7 @@ internal class LiveVideoDecoder(private val listener: Listener) : AutoCloseable 
             created.configure(format, target, null, 0)
             created.start()
             codec = created
+            awaitingKeyframe = true
             outputRunning = true
             startOutputThread(created, kind)
             Log.i(TAG, "${kind.label} decoder ${created.name} ready")
@@ -135,7 +166,7 @@ internal class LiveVideoDecoder(private val listener: Listener) : AutoCloseable 
 
     private fun queueLocked(decoder: MediaCodec, accessUnit: ByteArray, keyframe: Boolean): Boolean {
         return try {
-            val index = decoder.dequeueInputBuffer(if (keyframe) 20_000 else 4_000)
+            val index = decoder.dequeueInputBuffer(if (keyframe) KEYFRAME_WAIT_US else INPUT_WAIT_US)
             if (index < 0) return false
             val input = decoder.getInputBuffer(index) ?: return false
             if (input.capacity() < accessUnit.size) {
@@ -241,6 +272,7 @@ internal class LiveVideoDecoder(private val listener: Listener) : AutoCloseable 
         outputThread = null
         val active = codec
         codec = null
+        awaitingKeyframe = true
         runCatching { active?.stop() }
         worker?.interrupt()
         if (worker !== Thread.currentThread()) runCatching { worker?.join(250) }
@@ -280,5 +312,10 @@ internal class LiveVideoDecoder(private val listener: Listener) : AutoCloseable 
         const val TAG = "LiveVideoDecoder"
         const val DEFAULT_WIDTH = 1280
         const val DEFAULT_HEIGHT = 720
+        const val MAX_INPUT_SIZE = 8 * 1024 * 1024
+        const val FRAME_RATE_HINT = 60
+        const val OPERATING_RATE_HINT = 60f
+        const val INPUT_WAIT_US = 4_000L
+        const val KEYFRAME_WAIT_US = 50_000L
     }
 }
