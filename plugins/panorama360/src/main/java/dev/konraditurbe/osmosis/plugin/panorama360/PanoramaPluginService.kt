@@ -18,7 +18,7 @@ class PanoramaPluginService : Service() {
     private val pluginDescriptor = PluginDescriptor(
         id = PluginContract.PANORAMA_PLUGIN_ID,
         name = "osmodule 360 Viewer",
-        version = 1,
+        version = 2,
         protocolMin = 1,
         protocolMax = 1,
         capabilities = setOf(PluginContract.CAPABILITY_MEDIA_360_VIEW),

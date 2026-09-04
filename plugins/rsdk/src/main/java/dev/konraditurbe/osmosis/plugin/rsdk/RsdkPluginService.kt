@@ -21,7 +21,7 @@ class RsdkPluginService : Service() {
         // Must exactly match the service metadata in AndroidManifest.xml. Base compares both views
         // before accepting a panel PendingIntent, so drift here intentionally blocks the plugin.
         name = "Osmo 360 RC",
-        version = 5,
+        version = 6,
         protocolMin = 1,
         protocolMax = 1,
         capabilities = setOf(

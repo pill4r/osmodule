@@ -39,7 +39,7 @@
             </intent-filter>
             <meta-data android:name="dev.konraditurbe.osmosis.plugin.ID" android:value="panorama360" />
             <meta-data android:name="dev.konraditurbe.osmosis.plugin.NAME" android:value="osmodule 360 Viewer" />
-            <meta-data android:name="dev.konraditurbe.osmosis.plugin.VERSION" android:value="1" />
+            <meta-data android:name="dev.konraditurbe.osmosis.plugin.VERSION" android:value="2" />
             <meta-data android:name="dev.konraditurbe.osmosis.plugin.PROTOCOL_MIN" android:value="1" />
             <meta-data android:name="dev.konraditurbe.osmosis.plugin.PROTOCOL_MAX" android:value="1" />
             <meta-data
